@@ -5,16 +5,9 @@
 #include <cstrike>
 #include <zombiereloaded>
 #include <scp>
+#include <zleader>
 
 #pragma newdecls required
-
-#define ALPHA 0
-#define BRAVO 1
-#define CHARLIE 2
-#define DELTA 3
-#define ECHO 4
-
-#define MAXLEADER 5
 
 // Status
 int g_iCurrentLeader[MAXLEADER] = {-1, -1, -1, -1, -1};
@@ -54,16 +47,6 @@ int g_BeamSprite = -1;
 int g_HaloSprite = -1;
 int g_Serial_Gen = 0;
 int greyColor[4] = {128, 128, 128, 255};
-
-enum ResignReason
-{
-	R_DISCONNECTED = 0,
-	R_ADMINFORCED = 1,
-	R_SELFRESIGN = 2,
-	R_SPECTATOR = 3,
-	R_DIED = 4,
-	R_INFECTED = 5
-}
 
 public Plugin myinfo = 
 {
@@ -110,6 +93,17 @@ public void OnPluginStart()
 	HookConVarChange(g_Cvar_RemoveOnDie, OnConVarChanged);
 
 	HookRadio();
+}
+
+public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max)
+{
+	CreateNative("ZL_SetLeader", Native_SetLeader);
+	CreateNative("ZL_IsClientLeader", Native_IsClientLeader);
+	CreateNative("ZL_RemoveLeader", Native_RemoveLeader);
+	CreateNative("ZL_GetClientLeaderSlot", Native_RemoveLeader);
+	CreateNative("ZL_IsLeaderSlotFree", Native_IsLeaderSlotFree);
+
+	return APLRes_Success;
 }
 
 /* =========================================================================
@@ -1094,6 +1088,55 @@ stock bool IsValidClient(int client, bool nobots = true)
 ||  API
 ||
 ============================================================================ */
+
+public int Native_SetLeader(Handle hPlugins, int numParams)
+{
+	int client = GetNativeCell(1);
+	int slot = GetNativeCell(2);
+
+	SetClientLeader(client, -1, slot);
+}
+
+public int Native_IsClientLeader(Handle hPlugins, int numParams)
+{
+	int client = GetNativeCell(1);
+
+	return IsClientLeader(client);
+}
+
+public int Native_RemoveLeader(Handle hPlugins, int numParams)
+{
+	int client = GetNativeCell(1);
+	ResignReason reason = view_as<ResignReason>(GetNativeCell(2));
+	bool announce = view_as<bool>(GetNativeCell(3));
+
+	if(!IsClientLeader(client))
+	{
+		ThrowNativeError(1, "the client %N is not the leader", client);
+		return;
+	}
+
+	RemoveLeader(client, reason, announce);
+}
+
+public int Native_GetClientLeaderSlot(Handle hPlugins, int numParams)
+{
+	int client = GetNativeCell(1);
+
+	if(!IsClientLeader(client))
+	{
+		ThrowNativeError(1, "the client %N is not the leader", client);
+		return -1;
+	}
+
+	return GetClientLeaderSlot(client);
+}
+
+public int Native_IsLeaderSlotFree(Handle hPlugins, int numParams)
+{
+	int slot = GetNativeCell(1);
+	return IsLeaderSlotFree(slot);
+}
 
 stock void GetLeaderCodename(int slot, char[] buffer, int maxlen)
 {
