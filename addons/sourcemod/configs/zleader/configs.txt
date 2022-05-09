@@ -1,0 +1,12 @@
+"zleader"
+{
+	"default"
+	{
+		"defend_vmt"	"materials/oylsister/ed_defend.vmt"
+		"defend_vtf"	"materials/oylsister/ed_defend.vtf"
+		"follow_vmt"	"materials/oylsister/ed_follow.vmt"
+		"follow_vtf"	"materials/oylsister/ed_follow.vtf"
+		
+		"marker_mdl"	"models/nep/misc/signal_marker.mdl"
+	}
+}

@@ -1,0 +1,14 @@
+UnlitGeneric
+{
+	$basetexture "models/nep/misc/signal_marker/material0"
+	// change material path here if you want.
+
+	$translucent 1
+	$additive 1
+	$nocull 1
+
+	$nodecal 1
+
+	$color2 "[0 0.63 0]"
+	// adjust the color.  R G B
+}

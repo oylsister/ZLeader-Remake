@@ -1,0 +1,10 @@
+materials/oylsister/ed_defend.vmt
+materials/oylsister/ed_defend.vtf
+materials/oylsister/ed_follow.vmt
+materials/oylsister/ed_follow.vtf
+
+materials/signal_marker/material0.vtf
+materials/signal_marker/material0.vmt
+models/nep/misc/signal_marker.mdl
+models/nep/misc/signal_marker.dx90.vtx
+models/nep/misc/signal_marker.vvd
