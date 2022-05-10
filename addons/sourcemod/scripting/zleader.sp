@@ -24,8 +24,7 @@ bool g_bRemoveOnDie;
 // Leader Marker and Sprite
 int g_iClientSprite[MAXPLAYERS+1] = -1;
 int spriteEntities[MAXPLAYERS+1];
-int g_iClientMarker[MAXPLAYERS+1] = -1;
-int markerEntities[MAXPLAYERS+1];
+int g_iClientMarker[MAXPLAYERS+1];
 
 char g_sDefendVMT[PLATFORM_MAX_PATH];
 char g_sDefendVTF[PLATFORM_MAX_PATH];
@@ -425,7 +424,7 @@ public int LeaderMenuHandler(Menu menu, MenuAction action, int param1, int param
 
 			else if(StrEqual(info, "Follow Me"))
 			{
-				if(g_iClientMarker[param1] != SP_FOLLOW)
+				if(g_iClientSprite[param1] != SP_FOLLOW)
 				{
 					RemoveSprite(param1);
 					g_iClientSprite[param1] = SP_FOLLOW;
@@ -779,9 +778,11 @@ public void RemoveSprite(int client)
 	{
 		char m_szClassname[64];
 		GetEdictClassname(spriteEntities[client], m_szClassname, sizeof(m_szClassname));
+
 		if(strcmp("env_sprite", m_szClassname)==0)
-		AcceptEntityInput(spriteEntities[client], "Kill");
+			AcceptEntityInput(spriteEntities[client], "Kill");
 	}
+
 	spriteEntities[client] = -1;
 }
 
@@ -829,14 +830,15 @@ public int AttachSprite(int client, char[] sprite) //https://forums.alliedmods.n
 
 public void RemoveMarker(int client)
 {
-	if (markerEntities[client] != -1 && IsValidEdict(markerEntities[client]))
+	if (g_iClientMarker[client] != -1 && IsValidEdict(g_iClientMarker[client]))
 	{
 		char m_szClassname[64];
-		GetEdictClassname(markerEntities[client], m_szClassname, sizeof(m_szClassname));
-		if(strcmp("prop_dynamic_override", m_szClassname)==0)
-		AcceptEntityInput(markerEntities[client], "Kill");
+		GetEdictClassname(g_iClientMarker[client], m_szClassname, sizeof(m_szClassname));
+
+		if(strcmp("prop_dynamic", m_szClassname) == 0)
+			AcceptEntityInput(g_iClientMarker[client], "Kill");
 	}
-	markerEntities[client] = -1;
+	g_iClientMarker[client] = -1;
 }
 
 public int SpawnAimMarker(int client, char[] model)
@@ -846,70 +848,34 @@ public int SpawnAimMarker(int client, char[] model)
 		return -1;
 	}
 
-	if(!SetAimEndPoint(client)){
-		return -1;
-	}
-
-	int Ent = CreateEntityByName("prop_dynamic_override");
+	int Ent = CreateEntityByName("prop_dynamic");
 	if(!Ent) return -1;
 
+	GetPlayerEye(client, g_pos);
+
 	DispatchKeyValue(Ent, "model", model);
+	DispatchKeyValue(Ent, "DefaultAnim", "default");
+	DispatchKeyValue(Ent, "classname", "prop_dynamic");
 	DispatchKeyValue(Ent, "spawnflags", "1");
-	SetEntProp(Ent, Prop_Send, "m_CollisionGroup", 1);
 	DispatchKeyValue(Ent, "rendermode", "1");
 	DispatchKeyValue(Ent, "rendercolor", "255 255 255");
 	DispatchSpawn(Ent);
+
 	TeleportEntity(Ent, g_pos, NULL_VECTOR, NULL_VECTOR);
-
-	/* 
-	int iRotator = CreateEntityByName("func_rotating");
-	DispatchKeyValueVector(iRotator, "origin", g_pos);
-
-	DispatchKeyValue(iRotator, "maxspeed", "50");
-	DispatchKeyValue(iRotator, "spawnflags", "64");
-	DispatchSpawn(iRotator);
-
-	SetVariantString("!activator");
-	AcceptEntityInput(Ent, "SetParent", iRotator, iRotator);
-	AcceptEntityInput(iRotator, "Start");
-	*/
+	SetEntProp(Ent, Prop_Send, "m_CollisionGroup", 1);
 
 	return Ent;
 }
 
-public bool SetAimEndPoint(int client)
+stock void GetPlayerEye(int client, float pos[3])
 {
-	float vAngles[3];
-	float vOrigin[3];
-	float vBuffer[3];
-	float vStart[3];
-	float Distance;
+	float vAngles[3], vOrigin[3];
 	
-	GetClientEyePosition(client,vOrigin);
+	GetClientEyePosition(client, vOrigin);
 	GetClientEyeAngles(client, vAngles);
-	
-    //get endpoint for spawn marker
-	Handle trace = TR_TraceRayFilterEx(vOrigin, vAngles, MASK_SHOT, RayType_Infinite, TraceEntityFilterPlayer);
-    	
-	if(TR_DidHit(trace))
-	{   	 
-   	 	TR_GetEndPosition(vStart, trace);
-		GetVectorDistance(vOrigin, vStart, false);
-		Distance = -35.0;
-   	 	GetAngleVectors(vAngles, vBuffer, NULL_VECTOR, NULL_VECTOR);
-		g_pos[0] = vStart[0] + (vBuffer[0]*Distance);
-		g_pos[1] = vStart[1] + (vBuffer[1]*Distance);
-		g_pos[2] = vStart[2] + (vBuffer[2]*Distance) + 25.0;
-	}
-	else
-	{
-		PrintToChat(client, "\x04[ZLeader]\x01 Could not spawn marker");
-		CloseHandle(trace);
-		return false;
-	}
-	
-	CloseHandle(trace);
-	return true;
+
+	TR_TraceRayFilter(vOrigin, vAngles, MASK_SOLID, RayType_Infinite, TraceEntityFilterPlayer);
+	TR_GetEndPosition(pos);
 }
 
 public bool TraceEntityFilterPlayer(int entity, int contentsMask)
@@ -1037,11 +1003,21 @@ void SetClientLeader(int client, int adminset = -1, int slot)
 void RemoveLeader(int client, ResignReason reason, bool announce)
 {
 	char codename[32];
-	if(!IsClientLeader(client))
-		return;
-
 	int slot = GetClientLeaderSlot(client);
 	GetLeaderCodename(slot, codename, sizeof(codename));
+
+	RemoveMarker(client);
+	RemoveSprite(client);
+
+	if(g_bBeaconActive[client])
+		ToggleBeacon(client);
+
+	g_bClientLeader[client] = false;
+	g_iCurrentLeader[g_iClientLeaderSlot[client]] = -1;
+	g_iClientLeaderSlot[client] = -1;
+	g_iClientGetVoted[client] = 0;
+	g_iClientSprite[client] = -1;
+	g_bBeaconActive[client] = false;
 
 	if(announce)
 	{
@@ -1073,19 +1049,6 @@ void RemoveLeader(int client, ResignReason reason, bool announce)
 			}
 		}
 	}
-
-	RemoveMarker(client);
-	RemoveSprite(client);
-
-	if(g_bBeaconActive[client])
-		ToggleBeacon(client);
-
-	g_bClientLeader[client] = false;
-	g_iCurrentLeader[g_iClientLeaderSlot[client]] = -1;
-	g_iClientLeaderSlot[client] = -1;
-	g_iClientGetVoted[client] = 0;
-	g_iClientSprite[client] = -1;
-	g_bBeaconActive[client] = false;
 }
 
 stock bool IsValidClient(int client, bool nobots = true)
