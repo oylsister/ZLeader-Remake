@@ -124,10 +124,10 @@ public void OnMapStart()
 	LoadDownloadTable();
 
 	AddFileToDownloadsTable(g_sDefendVMT);
-	PrecacheDecal(g_sDefendVMT, true);
+	PrecacheGeneric(g_sDefendVMT, true);
 	AddFileToDownloadsTable(g_sDefendVTF);
 	AddFileToDownloadsTable(g_sFollowVMT);
-	PrecacheDecal(g_sFollowVMT, true);
+	PrecacheGeneric(g_sFollowVMT, true);
 	AddFileToDownloadsTable(g_sFollowVTF);
 
 	PrecacheModel(g_sMarkerModel, true);
@@ -219,7 +219,7 @@ public void ZR_OnClientInfected(int client, int attacker, bool motherinfect, boo
 void LoadConfig()
 {
 	char spath[PLATFORM_MAX_PATH];
-	BuildPath(Path_SM, spath, sizeof(spath), "configs/zleader/config.txt");
+	BuildPath(Path_SM, spath, sizeof(spath), "configs/zleader/configs.txt");
 
 	if(!FileExists(spath))
 	{
@@ -410,11 +410,15 @@ public int LeaderMenuHandler(Menu menu, MenuAction action, int param1, int param
 			{
 				if(g_iClientSprite[param1] != SP_DEFEND)
 				{
+					RemoveSprite(param1);
 					g_iClientSprite[param1] = SP_DEFEND;
-					spriteEntities[param1] = AttachSprite(param1, g_sDefendVMT[g_iClientLeaderSlot[param1]]);
+					spriteEntities[param1] = AttachSprite(param1, g_sDefendVMT);
 				}
 				else
+				{
 					RemoveSprite(param1);
+					g_iClientSprite[param1] = SP_NONE;
+				}
 
 				LeaderMenu(param1);
 			}
@@ -423,11 +427,15 @@ public int LeaderMenuHandler(Menu menu, MenuAction action, int param1, int param
 			{
 				if(g_iClientMarker[param1] != SP_FOLLOW)
 				{
+					RemoveSprite(param1);
 					g_iClientSprite[param1] = SP_FOLLOW;
-					spriteEntities[param1] = AttachSprite(param1, g_sFollowVMT[g_iClientLeaderSlot[param1]]);
+					spriteEntities[param1] = AttachSprite(param1, g_sFollowVMT);
 				}
 				else
+				{
 					RemoveSprite(param1);
+					g_iClientSprite[param1] = SP_NONE;
+				}
 
 				LeaderMenu(param1);
 			}
@@ -1065,6 +1073,12 @@ void RemoveLeader(int client, ResignReason reason, bool announce)
 			}
 		}
 	}
+
+	RemoveMarker(client);
+	RemoveSprite(client);
+
+	if(g_bBeaconActive[client])
+		ToggleBeacon(client);
 
 	g_bClientLeader[client] = false;
 	g_iCurrentLeader[g_iClientLeaderSlot[client]] = -1;
