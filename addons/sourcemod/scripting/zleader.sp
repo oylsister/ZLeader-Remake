@@ -68,23 +68,6 @@ public void OnPluginStart()
 	RegConsoleCmd("sm_vl", Command_VoteLeader);
 	RegAdminCmd("sm_removeleader", Command_RemoveLeader, ADMFLAG_BAN);
 
-	Handle gameConfig = LoadGameConfigFile("funcommands.games");
-	if (gameConfig == null)
-	{
-		SetFailState("Unable to load game config funcommands.games");
-		return;
-	}
-
-	char buffer[PLATFORM_MAX_PATH];
-	if (GameConfGetKeyValue(gameConfig, "SpriteBeam", buffer, sizeof(buffer)) && buffer[0])
-	{
-		g_BeamSprite = PrecacheModel(buffer);
-	}
-	if (GameConfGetKeyValue(gameConfig, "SpriteHalo", buffer, sizeof(buffer)) && buffer[0])
-	{
-		g_HaloSprite = PrecacheModel(buffer);
-	}
-
 	HookEvent("player_team", OnPlayerTeam);
 	HookEvent("player_death", OnPlayerDeath);
 
@@ -102,6 +85,8 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 	CreateNative("ZL_RemoveLeader", Native_RemoveLeader);
 	CreateNative("ZL_GetClientLeaderSlot", Native_RemoveLeader);
 	CreateNative("ZL_IsLeaderSlotFree", Native_IsLeaderSlotFree);
+
+	RegPluginLibrary("zleader");
 
 	return APLRes_Success;
 }
@@ -135,6 +120,23 @@ public void OnMapStart()
 
 	PrecacheGeneric(g_sMarkerVMT, true);
 	AddFileToDownloadsTable(g_sMarkerVMT);
+
+	Handle gameConfig = LoadGameConfigFile("funcommands.games");
+	if (gameConfig == null)
+	{
+		SetFailState("Unable to load game config funcommands.games");
+		return;
+	}
+
+	char buffer[PLATFORM_MAX_PATH];
+	if (GameConfGetKeyValue(gameConfig, "SpriteBeam", buffer, sizeof(buffer)) && buffer[0])
+	{
+		g_BeamSprite = PrecacheModel(buffer);
+	}
+	if (GameConfGetKeyValue(gameConfig, "SpriteHalo", buffer, sizeof(buffer)) && buffer[0])
+	{
+		g_HaloSprite = PrecacheModel(buffer);
+	}
 }
 
 public void OnConfigsExecuted()
@@ -203,7 +205,7 @@ public void ZR_OnClientInfected(int client, int attacker, bool motherinfect, boo
 
 	if(g_bRemoveOnDie)
 	{
-		RemoveLeader(client, R_DIED, true);
+		RemoveLeader(client, R_INFECTED, true);
 		return;
 	}
 
@@ -331,20 +333,21 @@ public Action Command_Leader(int client, int args)
 	GetCmdArg(1, sArg, sizeof(sArg));
 
 	int target = FindTarget(client, sArg, false, false);
-	if (target == -1)
+	if (target != -1)
 	{
 		for(int i = 0; i < MAXLEADER; i++)
 		{
 			if(IsLeaderSlotFree(i))
 			{
 				SetClientLeader(target, client, i);
+				ReplyToCommand(client, " \x04[ZLeader]\x01 You have set leader on \x06%N", target);
 				LeaderMenu(target);
 				return Plugin_Handled;
 			}
-
-			ReplyToCommand(client, " \x04[ZLeader]\x01 All Leader slot is full!");
-			return Plugin_Stop;
 		}
+
+		ReplyToCommand(client, " \x04[ZLeader]\x01 All Leader slot is full!");
+		return Plugin_Stop;
 	}
 
 	return Plugin_Handled;
@@ -355,12 +358,12 @@ public void LeaderMenu(int client)
 	Menu menu = new Menu(LeaderMenuHandler);
 
 	menu.SetTitle("[ZLeader] Leader menu");
-	menu.AddItem("Defend Here", "Defend Here");
-	menu.AddItem("Follow Me", "Follow Me");
-	menu.AddItem("Toggle Beacon", "Toggle Beacon");
-	menu.AddItem("Place Marker", "Place Marker");
-	menu.AddItem("Remove Marker", "Remove Marker");
-	menu.AddItem("Resign from Leader", "Resign from Leader");
+	menu.AddItem("defend", "Defend Here");
+	menu.AddItem("follow", "Follow Me");
+	menu.AddItem("beacon", "Toggle Beacon");
+	menu.AddItem("marker", "Place Marker");
+	menu.AddItem("removemarker", "Remove Marker");
+	menu.AddItem("resign", "Resign from Leader");
 
 	menu.ExitButton = true;
 	menu.Display(client, 30);
@@ -375,31 +378,32 @@ public int LeaderMenuHandler(Menu menu, MenuAction action, int param1, int param
 			char info[64];
 			menu.GetItem(param2, info, sizeof(info));
 
-			char display[128];
-
-			if(StrEqual(info, "Defend Here"))
+			if(StrEqual(info, "defend", false))
 			{
+				char display[128];
 				if(g_iClientSprite[param1] == SP_DEFEND)
 				{
-					Format(display, sizeof(display), "Defend Here ☑", info);
+					Format(display, sizeof(display), "Defend Here (√)");
 					return RedrawMenuItem(display);
 				}
 			}
 
-			else if(StrEqual(info, "Follow Me"))
+			else if(StrEqual(info, "follow", false))
 			{
+				char display[128];
 				if(g_iClientSprite[param1] == SP_FOLLOW)
 				{
-					Format(display, sizeof(display), "Follow Me ☑", info);
+					Format(display, sizeof(display), "Follow Me (√)");
 					return RedrawMenuItem(display);
 				}
 			}
 
-			else if(StrEqual(info, "Toggle Beacon"))
+			else if(StrEqual(info, "beacon", false))
 			{
+				char display[128];
 				if(g_bBeaconActive[param1])
 				{
-					Format(display, sizeof(display), "Toggle Beacon ☑", info);
+					Format(display, sizeof(display), "Toggle Beacon (√)");
 					return RedrawMenuItem(display);
 				}
 			}
@@ -410,62 +414,65 @@ public int LeaderMenuHandler(Menu menu, MenuAction action, int param1, int param
 			char info[64];
 			menu.GetItem(param2, info, sizeof(info));
 
-			if(StrEqual(info, "Defend Here"))
+			if(!ZR_IsClientZombie(param1))
 			{
-				if(g_iClientSprite[param1] != SP_DEFEND)
+				if(StrEqual(info, "defend", false))
 				{
-					RemoveSprite(param1);
-					g_iClientSprite[param1] = SP_DEFEND;
-					spriteEntities[param1] = AttachSprite(param1, g_sDefendVMT);
-				}
-				else
-				{
-					RemoveSprite(param1);
-					g_iClientSprite[param1] = SP_NONE;
-				}
+					if(g_iClientSprite[param1] != SP_DEFEND)
+					{
+						RemoveSprite(param1);
+						g_iClientSprite[param1] = SP_DEFEND;
+						spriteEntities[param1] = AttachSprite(param1, g_sDefendVMT);
+					}
+					else
+					{
+						RemoveSprite(param1);
+						g_iClientSprite[param1] = SP_NONE;
+					}
 
-				LeaderMenu(param1);
-			}
-
-			else if(StrEqual(info, "Follow Me"))
-			{
-				if(g_iClientSprite[param1] != SP_FOLLOW)
-				{
-					RemoveSprite(param1);
-					g_iClientSprite[param1] = SP_FOLLOW;
-					spriteEntities[param1] = AttachSprite(param1, g_sFollowVMT);
-				}
-				else
-				{
-					RemoveSprite(param1);
-					g_iClientSprite[param1] = SP_NONE;
+					LeaderMenu(param1);
 				}
 
-				LeaderMenu(param1);
-			}
+				else if(StrEqual(info, "follow", false))
+				{
+					if(g_iClientSprite[param1] != SP_FOLLOW)
+					{
+						RemoveSprite(param1);
+						g_iClientSprite[param1] = SP_FOLLOW;
+						spriteEntities[param1] = AttachSprite(param1, g_sFollowVMT);
+					}
+					else
+					{
+						RemoveSprite(param1);
+						g_iClientSprite[param1] = SP_NONE;
+					}
 
-			else if(StrEqual(info, "Toggle Beacon"))
-			{
-				ToggleBeacon(param1);
-				LeaderMenu(param1);
-			}
+					LeaderMenu(param1);
+				}
 
-			else if(StrEqual(info, "Place Marker"))
-			{
-				RemoveMarker(param1);
-				g_iClientMarker[param1] = SpawnAimMarker(param1, g_sMarkerModel);
-				LeaderMenu(param1);
-			}
+				else if(StrEqual(info, "beacon", false))
+				{
+					ToggleBeacon(param1);
+					LeaderMenu(param1);
+				}
 
-			else if(StrEqual(info, "Remove Marker"))
-			{
-				RemoveMarker(param1);
-				LeaderMenu(param1);
-			}
+				else if(StrEqual(info, "marker", false))
+				{
+					RemoveMarker(param1);
+					g_iClientMarker[param1] = SpawnAimMarker(param1, g_sMarkerModel);
+					LeaderMenu(param1);
+				}
 
-			else if(StrEqual(info, "Resign from Leader"))
-			{
-				RemoveLeader(param1, R_SELFRESIGN, true);
+				else if(StrEqual(info, "removemarker", false))
+				{
+					RemoveMarker(param1);
+					LeaderMenu(param1);
+				}
+
+				else if(StrEqual(info, "resign", false))
+				{
+					RemoveLeader(param1, R_SELFRESIGN, true);
+				}
 			}
 		}
 
@@ -1003,6 +1010,7 @@ void SetClientLeader(int client, int adminset = -1, int slot)
 	g_bClientLeader[client] = true;
 	g_iClientLeaderSlot[client] = slot;
 	g_iCurrentLeader[slot] = client;
+	g_iClientSprite[client] = SP_NONE;
 }
 
 void RemoveLeader(int client, ResignReason reason, bool announce)
