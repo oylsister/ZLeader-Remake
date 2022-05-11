@@ -32,6 +32,7 @@ char g_sFollowVMT[PLATFORM_MAX_PATH];
 char g_sFollowVTF[PLATFORM_MAX_PATH];
 
 char g_sMarkerModel[PLATFORM_MAX_PATH];
+char g_sMarkerVMT[PLATFORM_MAX_PATH];
 
 float g_pos[3];
 
@@ -131,6 +132,9 @@ public void OnMapStart()
 
 	PrecacheModel(g_sMarkerModel, true);
 	AddFileToDownloadsTable(g_sMarkerModel);
+
+	PrecacheGeneric(g_sMarkerVMT, true);
+	AddFileToDownloadsTable(g_sMarkerVMT);
 }
 
 public void OnConfigsExecuted()
@@ -243,6 +247,7 @@ void LoadConfig()
 			KvGetString(kv, "follow_vtf", g_sFollowVTF, PLATFORM_MAX_PATH);
 
 			KvGetString(kv, "marker_mdl", g_sMarkerModel, PLATFORM_MAX_PATH);
+			KvGetString(kv, "marker_vmt", g_sMarkerVMT, PLATFORM_MAX_PATH);
 		}
 	}
 }
@@ -370,13 +375,13 @@ public int LeaderMenuHandler(Menu menu, MenuAction action, int param1, int param
 			char info[64];
 			menu.GetItem(param2, info, sizeof(info));
 
-			char display[64];
+			char display[128];
 
 			if(StrEqual(info, "Defend Here"))
 			{
 				if(g_iClientSprite[param1] == SP_DEFEND)
 				{
-					Format(display, sizeof(display), "%s ☑", info);
+					Format(display, sizeof(display), "Defend Here ☑", info);
 					return RedrawMenuItem(display);
 				}
 			}
@@ -385,7 +390,7 @@ public int LeaderMenuHandler(Menu menu, MenuAction action, int param1, int param
 			{
 				if(g_iClientSprite[param1] == SP_FOLLOW)
 				{
-					Format(display, sizeof(display), "%s ☑", info);
+					Format(display, sizeof(display), "Follow Me ☑", info);
 					return RedrawMenuItem(display);
 				}
 			}
@@ -394,7 +399,7 @@ public int LeaderMenuHandler(Menu menu, MenuAction action, int param1, int param
 			{
 				if(g_bBeaconActive[param1])
 				{
-					Format(display, sizeof(display), "%s ☑", info);
+					Format(display, sizeof(display), "Toggle Beacon ☑", info);
 					return RedrawMenuItem(display);
 				}
 			}
