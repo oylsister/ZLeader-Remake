@@ -3,11 +3,18 @@
 #include <sourcemod>
 #include <sdktools>
 #include <cstrike>
+#include <clientprefs>
 #include <zombiereloaded>
 #include <scp>
 #include <zleader>
 
+#undef REQUIRE_PLUGIN
+#include <vip_core>
+#define REQUIRE_PLUGIN
+
 #pragma newdecls required
+
+bool vipcore;
 
 // Status
 int g_iCurrentLeader[MAXLEADER] = {-1, -1, -1, -1, -1};
@@ -25,20 +32,42 @@ bool g_bRemoveOnDie;
 int g_iClientSprite[MAXPLAYERS+1] = -1;
 int spriteEntities[MAXPLAYERS+1];
 int g_iClientMarker[MAXPLAYERS+1];
+int g_iClientMarkerType[MAXPLAYERS+1] = -1;
+int markerEntities[MAXPLAYERS+1];
 
 char g_sDefendVMT[PLATFORM_MAX_PATH];
 char g_sDefendVTF[PLATFORM_MAX_PATH];
 char g_sFollowVMT[PLATFORM_MAX_PATH];
 char g_sFollowVTF[PLATFORM_MAX_PATH];
-
 char g_sMarkerModel[PLATFORM_MAX_PATH];
 char g_sMarkerVMT[PLATFORM_MAX_PATH];
+
+char g_sMarkerArrowVMT[PLATFORM_MAX_PATH];
+char g_sMarkerArrowVTF[PLATFORM_MAX_PATH];
+int g_iColorArrow[4];
+
+char g_sMarkerZMTP_VMT[PLATFORM_MAX_PATH];
+char g_sMarkerZMTP_VTF[PLATFORM_MAX_PATH];
+int g_iColorZMTP[4];
+
+char g_sMarkerNoHug_VMT[PLATFORM_MAX_PATH];
+char g_sMarkerNoHug_VTF[PLATFORM_MAX_PATH];
+int g_iColorNoHug[4];
+
+bool g_bVIPAccess[MAXPLAYERS+1] = false;
 
 float g_pos[3];
 
 #define SP_NONE -1
 #define SP_DEFEND 0
 #define SP_FOLLOW 1
+
+#define MK_NONE -1
+#define MK_NORMAL 0
+#define MK_ZMTP 1
+#define MK_NOHUG 2
+
+int g_iButtoncount[MAXPLAYERS+1] = 0;
 
 // Beacon
 bool g_bBeaconActive[MAXPLAYERS+1] = false;
@@ -48,13 +77,23 @@ int g_HaloSprite = -1;
 int g_Serial_Gen = 0;
 int greyColor[4] = {128, 128, 128, 255};
 
+// Client Preference
+#define MK_CLIENT 0
+#define MK_CROSSHAIR 1
+
+Handle g_CMarkerPos = INVALID_HANDLE;
+Handle g_CShortcut = INVALID_HANDLE;
+
+bool g_bShorcut[MAXPLAYERS+1];
+int g_iMarkerPos[MAXPLAYERS+1];
+
 public Plugin myinfo = 
 {
 	name = "ZLeader Remake",
-	author = "Oylsister Original by AntiTeal, nuclear silo, CNTT, colia",
+	author = "Oylsister Original from ZR-Leader by AntiTeal, nuclear silo, CNTT, colia",
 	description = "Allows for a human to be a leader, and give them special functions with it.",
-	version = "1.0",
-	url = ""
+	version = "2.0",
+	url = "https://github.com/oylsister/ZLeader-Remake"
 };
 
 public void OnPluginStart()
@@ -68,12 +107,19 @@ public void OnPluginStart()
 	RegConsoleCmd("sm_vl", Command_VoteLeader);
 	RegAdminCmd("sm_removeleader", Command_RemoveLeader, ADMFLAG_BAN);
 
+	AddCommandListener(QuickCommand, "+lookatweapon");
+
 	HookEvent("player_team", OnPlayerTeam);
 	HookEvent("player_death", OnPlayerDeath);
+	HookEvent("round_start", OnRoundStart);
 
 	g_Cvar_RemoveOnDie = CreateConVar("sm_leader_remove_on_die", "1.0", "Remove Leader if leader get infected or died", _, true, 0.0, true, 1.0);
-
 	HookConVarChange(g_Cvar_RemoveOnDie, OnConVarChanged);
+
+	g_CMarkerPos = RegClientCookie("zleader_makerpos", "ZLeader Marker Position", CookieAccess_Protected);
+	g_CShortcut = RegClientCookie("zleader_shortcut", "ZLeader ShortCut", CookieAccess_Protected);
+
+	SetCookieMenuItem(ZLeaderCookieHandler, 0, "[ZLeader] Client Setting");
 
 	HookRadio();
 }
@@ -89,6 +135,171 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 	RegPluginLibrary("zleader");
 
 	return APLRes_Success;
+}
+
+public void OnAllPluginsLoaded()
+{
+	vipcore = LibraryExists("vip_core");
+}
+
+public void OnLibraryRemoved(const char[] name)
+{
+	if(StrEqual(name, "vip_core"))
+		vipcore = false;
+}
+
+public void OnLibraryAdded(const char[] name)
+{
+	if(StrEqual(name, "vip_core"))
+		vipcore = true;
+}
+
+/* =========================================================================
+||
+||  VIP
+||
+============================================================================ */
+
+public void VIP_OnClientLoaded(int client, bool isVIP)
+{
+	if(!vipcore)
+		return;
+
+	if(isVIP)
+	{
+		char group[64];
+		VIP_GetClientVIPGroup(client, group, 64);
+
+		if(!StrEqual(group, "Supporter", false))
+		{
+			g_bVIPAccess[client] = true;
+		}
+	}
+	else
+	{
+		g_bVIPAccess[client] = false;
+	}
+}
+
+/* =========================================================================
+||
+||  Cookies
+||
+============================================================================ */
+
+public void OnClientCookiesCached(int client)
+{
+	char buffer[32];
+	GetClientCookie(client, g_CShortcut, buffer, 32);
+	if(buffer[0] != '\0')
+	{
+		g_bShorcut[client] = view_as<bool>(StringToInt(buffer));
+	}
+	else
+	{
+		g_bShorcut[client] = true;
+	}
+
+	GetClientCookie(client, g_CMarkerPos, buffer, 32);
+	if(buffer[0] != '\0')
+	{
+		g_iMarkerPos[client] = StringToInt(buffer);
+	}
+	else
+	{
+		g_iMarkerPos[client] = MK_CROSSHAIR;
+	}
+}
+
+public void ZLeaderCookieHandler(int client, CookieMenuAction action, any info, char[] buffer, int maxlen)
+{
+	switch (action)
+	{
+		case CookieMenuAction_SelectOption:
+		{
+			ZLeaderSetting(client);
+		}
+	}
+}
+
+public void ZLeaderSetting(int client)
+{
+	Menu menu = new Menu(ZLeaderSettingHandler, MENU_ACTIONS_ALL);
+
+	menu.SetTitle("[ZLeader] Client Setting");
+	menu.AddItem("shortcut", "Shortcut F Key");
+	menu.AddItem("markerpos", "Marker Position");
+
+	menu.ExitBackButton = true;
+	menu.ExitButton = true;
+	menu.Display(client, MENU_TIME_FOREVER);
+}
+
+public int ZLeaderSettingHandler(Menu menu, MenuAction action, int param1, int param2)
+{
+	switch (action)
+	{
+		case MenuAction_DisplayItem:
+		{
+			char info[64];
+			char display[64];
+			menu.GetItem(param2, info, sizeof(info));
+			if(StrEqual(info, "shortcut"))
+			{
+				Format(display, sizeof(display), "Shortcut F Key : %s", g_bShorcut[param1] ? "Enabled" : "Disable");
+				return RedrawMenuItem(display);
+			}
+
+			else if(StrEqual(info, "markerpos"))
+			{
+				char thepos[32];
+
+				if(g_iMarkerPos[param1] == MK_CLIENT)
+					Format(thepos, sizeof(thepos), "Client's Position");
+
+				else
+					Format(thepos, sizeof(thepos), "Client's Crosshair");
+
+				Format(display, sizeof(display), "Marker Position : %s", thepos);
+				return RedrawMenuItem(display);
+			}
+		}
+		case MenuAction_Select:
+		{
+			char info[64];
+			menu.GetItem(param2, info, sizeof(info));
+			if(StrEqual(info, "shortcut"))
+			{
+				g_bShorcut[param1] = !g_bShorcut[param1];
+				PrintToChat(param1, " \x04[ZLeader]\x01 You have %s \x01leader shortcut key", g_bShorcut[param1] ? "\x05Enabled" : "\x07Disabled");
+			}
+			else if(StrEqual(info, "markerpos"))
+			{
+				if(g_iMarkerPos[param1] == MK_CLIENT)
+				{
+					g_iMarkerPos[param1] = MK_CROSSHAIR;
+					PrintToChat(param1, " \x04[ZLeader]\x01 You have set Marker to be set at \x0CYour crosshair\x01 position.");
+				}
+
+				else
+				{
+					g_iMarkerPos[param1] = MK_CLIENT;
+					PrintToChat(param1, " \x04[ZLeader]\x01 You have set Marker to be set at \x0CPlayer's\x01 position.");
+				}
+			}
+
+			ZLeaderSetting(param1);
+		}
+		case MenuAction_Cancel:
+		{
+			ShowCookieMenu(param1);
+		}
+		case MenuAction_End:
+		{
+			delete menu;
+		}
+	}
+	return 0;
 }
 
 /* =========================================================================
@@ -120,6 +331,18 @@ public void OnMapStart()
 
 	PrecacheGeneric(g_sMarkerVMT, true);
 	AddFileToDownloadsTable(g_sMarkerVMT);
+
+	PrecacheGeneric(g_sMarkerArrowVMT, true);
+	AddFileToDownloadsTable(g_sMarkerArrowVMT);
+	AddFileToDownloadsTable(g_sMarkerArrowVTF);
+
+	PrecacheGeneric(g_sMarkerZMTP_VMT, true);
+	AddFileToDownloadsTable(g_sMarkerZMTP_VMT);
+	AddFileToDownloadsTable(g_sMarkerZMTP_VTF);
+
+	PrecacheGeneric(g_sMarkerNoHug_VMT, true);
+	AddFileToDownloadsTable(g_sMarkerNoHug_VMT);
+	AddFileToDownloadsTable(g_sMarkerNoHug_VTF);
 
 	Handle gameConfig = LoadGameConfigFile("funcommands.games");
 	if (gameConfig == null)
@@ -198,6 +421,11 @@ public void OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 	PrintToChatAll(" \x04[ZLeader]\x01 Leader \x10%s\x01 \x07%N\x01 get infected!", codename, client);
 }
 
+public void OnRoundStart(Event event, const char[] name, bool dontBroadcast)
+{
+	KillAllBeacons();
+}
+
 public void ZR_OnClientInfected(int client, int attacker, bool motherinfect, bool override, bool respawn)
 {
 	if(!IsClientLeader(client))
@@ -250,6 +478,18 @@ void LoadConfig()
 
 			KvGetString(kv, "marker_mdl", g_sMarkerModel, PLATFORM_MAX_PATH);
 			KvGetString(kv, "marker_vmt", g_sMarkerVMT, PLATFORM_MAX_PATH);
+
+			KvGetString(kv, "arrow_vmt", g_sMarkerArrowVMT, PLATFORM_MAX_PATH);
+			KvGetString(kv, "arrow_vtf", g_sMarkerArrowVTF, PLATFORM_MAX_PATH);
+			KvGetColor(kv, "arrow_color", g_iColorArrow[0], g_iColorArrow[1], g_iColorArrow[2], g_iColorArrow[3]);
+
+			KvGetString(kv, "zmtp_vmt", g_sMarkerZMTP_VMT, PLATFORM_MAX_PATH);
+			KvGetString(kv, "zmtp_vtf", g_sMarkerZMTP_VTF, PLATFORM_MAX_PATH);
+			KvGetColor(kv, "zmtp_color", g_iColorZMTP[0], g_iColorZMTP[1], g_iColorZMTP[2], g_iColorZMTP[3]);
+
+			KvGetString(kv, "nodoorhug_vmt", g_sMarkerNoHug_VMT, PLATFORM_MAX_PATH);
+			KvGetString(kv, "nodoorhug_vtf", g_sMarkerNoHug_VTF, PLATFORM_MAX_PATH);
+			KvGetColor(kv, "nodoorhug_color", g_iColorNoHug[0], g_iColorNoHug[1], g_iColorNoHug[2], g_iColorNoHug[3]);
 		}
 	}
 }
@@ -304,7 +544,7 @@ public Action Command_Leader(int client, int args)
 			}
 		}
 
-		if(IsClientAdmin(client))
+		if(IsClientAdmin(client) || (vipcore && g_bVIPAccess[client]))
 		{
 			if(!IsClientLeader(client))
 			{
@@ -355,7 +595,7 @@ public Action Command_Leader(int client, int args)
 
 public void LeaderMenu(int client)
 {
-	Menu menu = new Menu(LeaderMenuHandler);
+	Menu menu = new Menu(LeaderMenuHandler, MENU_ACTIONS_ALL);
 
 	menu.SetTitle("[ZLeader] Leader menu");
 	menu.AddItem("defend", "Defend Here");
@@ -458,9 +698,7 @@ public int LeaderMenuHandler(Menu menu, MenuAction action, int param1, int param
 
 				else if(StrEqual(info, "marker", false))
 				{
-					RemoveMarker(param1);
-					g_iClientMarker[param1] = SpawnAimMarker(param1, g_sMarkerModel);
-					LeaderMenu(param1);
+					MarkerMenu(param1);
 				}
 
 				else if(StrEqual(info, "removemarker", false))
@@ -725,6 +963,9 @@ public void KillAllBeacons()
 {
 	for (int i = 1; i <= MaxClients; i++)
 	{
+		if(g_bBeaconActive[i])
+			g_bBeaconActive[i] = false;
+
 		KillBeacon(i);
 	}
 }
@@ -840,6 +1081,96 @@ public int AttachSprite(int client, char[] sprite) //https://forums.alliedmods.n
 ||
 ============================================================================ */
 
+public void MarkerMenu(int client)
+{
+	Menu menu = new Menu(MarkerMenuHandler, MENU_ACTIONS_ALL);
+
+	menu.SetTitle("[ZLeader] Marker Menu Option");
+	menu.AddItem("normal", "Marker Only");
+	menu.AddItem("zmtp", "ZM Teleport");
+	menu.AddItem("nohug", "No Doorhug");
+
+	menu.ExitBackButton = true;
+	menu.ExitButton = true;
+	menu.Display(client, MENU_TIME_FOREVER);
+}
+
+public int MarkerMenuHandler(Menu menu, MenuAction action, int param1, int param2)
+{
+	switch (action)
+	{
+		case MenuAction_DisplayItem:
+		{
+			char info[64];
+			char display[64];
+			menu.GetItem(param2, info, sizeof(info));
+
+			if(StrEqual(info, "normal"))
+			{
+				if(g_iClientMarkerType[param1] == MK_NORMAL)
+				{
+					Format(display, sizeof(display), "Marker Only (√)");
+					return RedrawMenuItem(display);
+				}
+			}
+
+			else if(StrEqual(info, "zmtp"))
+			{
+				if(g_iClientMarkerType[param1] == MK_ZMTP)
+				{
+					Format(display, sizeof(display), "ZM Teleport (√)");
+					return RedrawMenuItem(display);
+				}
+			}
+
+			else if(StrEqual(info, "nohug"))
+			{
+				if(g_iClientMarkerType[param1] == MK_NOHUG)
+				{
+					Format(display, sizeof(display), "No Doorhug (√)");
+					return RedrawMenuItem(display);
+				}
+			}
+		}
+		case MenuAction_Select:
+		{
+			char info[64];
+			menu.GetItem(param2, info, sizeof(info));
+
+			RemoveMarker(param1);
+
+			if(StrEqual(info, "normal"))
+			{
+				g_iClientMarkerType[param1] = MK_NORMAL;
+				SpawnMarker(param1, MK_NORMAL);
+			}
+
+			else if(StrEqual(info, "zmtp"))
+			{
+				g_iClientMarkerType[param1] = MK_ZMTP;
+				SpawnMarker(param1, MK_ZMTP);
+			}
+
+			else if(StrEqual(info, "nohug"))
+			{
+				g_iClientMarkerType[param1] = MK_NOHUG;
+				SpawnMarker(param1, MK_NOHUG);
+			}
+
+			MarkerMenu(param1);
+		}
+		case MenuAction_Cancel:
+		{
+			LeaderMenu(param1);
+		}
+		case MenuAction_End:
+		{
+			delete menu;
+		}
+	}
+	return 0;
+}
+
 public void RemoveMarker(int client)
 {
 	if (g_iClientMarker[client] != -1 && IsValidEdict(g_iClientMarker[client]))
@@ -849,8 +1180,33 @@ public void RemoveMarker(int client)
 
 		if(strcmp("prop_dynamic", m_szClassname) == 0)
 			AcceptEntityInput(g_iClientMarker[client], "Kill");
+
+		if (markerEntities[client] != -1 && IsValidEdict(markerEntities[client]))
+		{
+			GetEdictClassname(markerEntities[client], m_szClassname, sizeof(m_szClassname));
+
+			if(strcmp("env_sprite", m_szClassname) == 0)
+				AcceptEntityInput(markerEntities[client], "Kill");
+		}
 	}
+
 	g_iClientMarker[client] = -1;
+	markerEntities[client] = -1;
+	g_iClientMarkerType[client] = MK_NONE;
+}
+
+public void SpawnMarker(int client, int type)
+{
+	if (type == MK_NORMAL)
+		markerEntities[client] = SpawnSpecialMarker(client, g_sMarkerArrowVMT);
+
+	else if(type == MK_ZMTP)
+		markerEntities[client] = SpawnSpecialMarker(client, g_sMarkerZMTP_VMT);
+
+	else
+		markerEntities[client] = SpawnSpecialMarker(client, g_sMarkerNoHug_VMT);
+
+	g_iClientMarker[client] = SpawnAimMarker(client, g_sMarkerModel);
 }
 
 public int SpawnAimMarker(int client, char[] model)
@@ -863,7 +1219,12 @@ public int SpawnAimMarker(int client, char[] model)
 	int Ent = CreateEntityByName("prop_dynamic");
 	if(!Ent) return -1;
 
-	GetPlayerEye(client, g_pos);
+	if(g_iMarkerPos[client] == MK_CROSSHAIR)
+		GetPlayerEye(client, g_pos);
+
+	else
+		GetClientEyePosition(client, g_pos);
+
 
 	DispatchKeyValue(Ent, "model", model);
 	DispatchKeyValue(Ent, "DefaultAnim", "default");
@@ -873,8 +1234,53 @@ public int SpawnAimMarker(int client, char[] model)
 	DispatchKeyValue(Ent, "rendercolor", "255 255 255");
 	DispatchSpawn(Ent);
 
+	if(g_iClientMarkerType[client] == MK_NORMAL)
+		SetEntityRenderColor(Ent, g_iColorArrow[0], g_iColorArrow[1], g_iColorArrow[2], g_iColorArrow[3]);
+
+	else if(g_iClientMarkerType[client] == MK_NOHUG)
+		SetEntityRenderColor(Ent, g_iColorNoHug[0], g_iColorNoHug[1], g_iColorNoHug[2], g_iColorNoHug[3]);
+
+	else
+		SetEntityRenderColor(Ent, g_iColorZMTP[0], g_iColorZMTP[1], g_iColorZMTP[2], g_iColorZMTP[3]);
+
+
 	TeleportEntity(Ent, g_pos, NULL_VECTOR, NULL_VECTOR);
 	SetEntProp(Ent, Prop_Send, "m_CollisionGroup", 1);
+
+	return Ent;
+}
+
+public int SpawnSpecialMarker(int client, char[] sprite)
+{
+	if(!IsPlayerAlive(client))
+	{
+		return -1;
+	}
+
+	int Ent = CreateEntityByName("env_sprite");
+	if(!Ent) return -1;
+
+	if(g_iMarkerPos[client] == MK_CROSSHAIR)
+	{
+		GetPlayerEye(client, g_pos);
+		g_pos[2] += 80.0;
+	}
+
+	else
+	{
+		GetClientEyePosition(client, g_pos);
+		g_pos[2] += 80.0;
+	}
+
+	DispatchKeyValue(Ent, "model", sprite);
+	DispatchKeyValue(Ent, "classname", "env_sprite");
+	DispatchKeyValue(Ent, "spawnflags", "1");
+	DispatchKeyValue(Ent, "scale", "0.1");
+	DispatchKeyValue(Ent, "rendermode", "1");
+	DispatchKeyValue(Ent, "rendercolor", "255 255 255");
+	DispatchSpawn(Ent);
+
+	TeleportEntity(Ent, g_pos, NULL_VECTOR, NULL_VECTOR);
 
 	return Ent;
 }
@@ -1011,6 +1417,7 @@ void SetClientLeader(int client, int adminset = -1, int slot)
 	g_iClientLeaderSlot[client] = slot;
 	g_iCurrentLeader[slot] = client;
 	g_iClientSprite[client] = SP_NONE;
+	g_iClientMarkerType[client] = MK_NONE;
 }
 
 void RemoveLeader(int client, ResignReason reason, bool announce)
@@ -1062,6 +1469,30 @@ void RemoveLeader(int client, ResignReason reason, bool announce)
 			}
 		}
 	}
+}
+
+public Action QuickCommand(int client, const char[] command, int argc)
+{
+	if(IsClientLeader(client))
+	{
+		if(g_bShorcut[client])
+		{
+			g_iButtoncount[client]++;
+			CreateTimer(1.5, ResetButtonPressed, client);
+		}
+
+		if (g_iButtoncount[client] >= 2)
+		{
+			if(IsClientLeader(client))
+				LeaderMenu(client);
+		}
+	}
+	return Plugin_Continue;
+}
+
+public Action ResetButtonPressed(Handle timer, any client)
+{
+	g_iButtoncount[client] = 0;
 }
 
 stock bool IsValidClient(int client, bool nobots = true)

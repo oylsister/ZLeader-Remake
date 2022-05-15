@@ -1,0 +1,11 @@
+UnlitGeneric
+{
+	$basetexture "oylsister/signal_marker/material0"
+	// change material path here if you want.
+
+	$translucent 1
+	$additive 1
+	$nocull 1
+
+	$nodecal 1
+}

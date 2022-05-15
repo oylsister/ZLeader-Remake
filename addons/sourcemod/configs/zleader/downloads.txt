@@ -1,10 +1,14 @@
-materials/oylsister/ed_defend.vmt
-materials/oylsister/ed_defend.vtf
-materials/oylsister/ed_follow.vmt
-materials/oylsister/ed_follow.vtf
+materials/oylsister/eds_defend.vmt
+materials/oylsister/eds_defend.vtf
+materials/oylsister/eds_follow.vmt
+materials/oylsister/eds_follow.vtf
+materials/oylsister/eds_zmtp.vmt
+materials/oylsister/eds_zmtp.vtf
+materials/oylsister/eds_nohug.vmt
+materials/oylsister/eds_nohug.vtf
 
-materials/signal_marker/material0.vtf
-materials/signal_marker/material0.vmt
-models/nep/misc/signal_marker.mdl
-models/nep/misc/signal_marker.dx90.vtx
-models/nep/misc/signal_marker.vvd
+materials/oylsister/signal_marker/material0.vtf
+materials/oylsister/signal_marker/material0.vmt
+models/oylsister/misc/signal_marker.mdl
+models/oylsister/misc/signal_marker.dx90.vtx
+models/oylsister/misc/signal_marker.vvd
