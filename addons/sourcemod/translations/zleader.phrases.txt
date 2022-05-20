@@ -1,0 +1,237 @@
+"Phrases"
+{
+	// Non-Menu Message
+	"Prefix"
+	{
+		"en"    "{green}[ZLeader]{default}"
+	}
+
+	"Slot is full"
+	{
+		"en"    "All Leader slot is full!"
+	}
+
+	"You set client leader"
+	{
+		"#format" "{1:N}" 
+		"en"    "You have set leader on {lime}{1}{default}."
+	}
+
+	"Vote leader usage"
+	{
+		"en"    "Usage: sm_voteleader <player>"
+	}
+
+	"Already vote client"
+	{
+		"en"    "You've already voted for this person!"
+	}
+
+	"Has to be human"
+	{
+		"en"    "You have to vote for a human!"
+	}
+
+	"Vote for client"
+	{
+		"#format" "{1:N},{2:N},{3:i},{4:i}" 
+		"en"    "{1} has voted for {2} to be the leader. ({3}/{4} votes)"
+	}
+
+	"Invalid client"
+	{
+		"en"	"Invalid client."
+	}
+
+	"Client is not leader"
+	{
+		"#format" "{1:N}"
+		"en"	"{1} is not the leader!"
+	}
+
+	"Become New Leader"
+	{
+		"#format" "{1:N},{2:s}"
+		"en"	"{lightblue}{1} has become new {orange}Leader {2}{default}!"
+	}
+
+	// Remove Reason
+	"Remove Disconnected"
+	{
+		"#format" "{1:s},{2:N}"
+		"en"	"Leader {oranage}{1}{default} {lightred}{2}{default} has disconnected from the server!"
+	}
+
+	"Remove Admin Force"
+	{
+		"#format" "{1:s},{2:N}"
+		"en"	"Leader {oranage}{1}{default} {lightred}{2}{default} has been resigned by admin!"
+	}
+
+	"Remove Self Resign"
+	{
+		"#format" "{1:s},{2:N}"
+		"en"	"Leader {oranage}{1}{default} {lightred}{2}{default} has resigned by him/herself!"
+	}
+
+	"Remove Spectator"
+	{
+		"#format" "{1:s},{2:N}"
+		"en"	"Leader {oranage}{1}{default} {lightred}{2}{default} has been resigned for moving to spectator!"
+	}
+
+	"Remove Died"
+	{
+		"#format" "{1:s},{2:N}"
+		"en"	"Leader {oranage}{1}{default} {lightred}{2}{default} is died and get resigned!"
+	}
+
+	"Remove Infected"
+	{
+		"#format" "{1:s},{2:N}"
+		"en"	"Leader {oranage}{1}{default} {lightred}{2}{default} get infected and get resigned!"
+	}
+
+
+	// Menu Message
+	"Menu Prefix"
+	{
+		"en"	"[ZLeader]"
+	}
+
+	"Menu Leader title"
+	{
+		"en"	"Leader Menu"
+	}
+
+	"Menu Leader list title"
+	{
+		"en"	"Leader list menu"
+	}
+
+	"Menu Remove Leader title"
+	{
+		"en"	"Select leader to remove them"
+	}
+
+	"None"
+	{
+		"en"	"None"
+	}
+
+	"Defend Here"
+	{
+		"en"	"Defend Here"
+	}
+
+	"Follow Me"
+	{
+		"en"	"Follow Me"
+	}
+
+	"Toggle Beacon"
+	{
+		"en"	"Toggle Beacon"
+	}
+
+	"Place Marker"
+	{
+		"en"	"Place Marker"
+	}
+
+	"Remove Marker"
+	{
+		"en"	"Remove Marker"
+	}
+
+	"Resign from Leader"
+	{
+		"en"	"Resign from Leader"
+	}
+
+	// Marker Menu
+	"Marker menu title"
+	{
+		"en"	"Marker Menu Option"
+	}
+
+	"Marker Only"
+	{
+		"en"	"Marker Only"
+	}
+
+	"ZM Teleport"
+	{
+		"en"	"ZM Teleport"
+	}
+
+	"No Doorhug"
+	{
+		"en"	"No Doorhug"
+	}
+
+	// Preference
+	"Client Setting"
+	{
+		"en"	"Client Setting"
+	}
+
+	"Shortcut"
+	{
+		"en"	"Shortcut F Key"
+	}
+
+	"Marker Pos"
+	{
+		"en"	"Marker Postion"
+	}
+
+	"Enabled"
+	{
+		"en"	"Enabled"
+	}
+
+	"Disabled"
+	{
+		"en"	"Disabled"
+	}
+
+	"Client Position"
+	{
+		"en"	"Client's Position"
+	}
+
+	"Client Crosshair"
+	{
+		"en"	"Client's Crosshair"
+	}
+
+	"You set shortcut"
+	{
+		"#format"	"{1:s}"
+		"en"	"You have {1} {default}leader shortcut key."
+	}
+
+	"Marker Pos Crosshair"
+	{
+		"en"	"You have set Marker to be set at {darkblue}Your crosshair{default} position."
+	}
+
+	"Marker Pos Player Postion"
+	{
+		"en"	"You have set Marker to be set at {darkblue}Player's{default} position."
+	}
+
+	// Leader Die
+	"Has Died"
+	{
+		"#format"	"{1:s},{2:N}"
+		"en"	"Leader {orange}{1}{default} {red}{2}{default} is died!"
+	}
+
+	"Get Infected"
+	{
+		"#format"	"{1:s},{2:N}"
+		"en"	"Leader {orange}{1}{default} {red}{2}{default} get infected!"
+	}
+}

@@ -4,13 +4,13 @@
 #include <sdktools>
 #include <cstrike>
 #include <clientprefs>
+#include <multicolors>
 #include <zombiereloaded>
 #include <scp>
 #include <zleader>
 
 #undef REQUIRE_PLUGIN
 #include <vip_core>
-#define REQUIRE_PLUGIN
 
 #pragma newdecls required
 
@@ -31,9 +31,8 @@ bool g_bRemoveOnDie;
 // Leader Marker and Sprite
 int g_iClientSprite[MAXPLAYERS+1] = -1;
 int spriteEntities[MAXPLAYERS+1];
-int g_iClientMarker[MAXPLAYERS+1];
-int g_iClientMarkerType[MAXPLAYERS+1] = -1;
-int markerEntities[MAXPLAYERS+1];
+int g_iClientMarker[3][MAXPLAYERS+1];
+int markerEntities[3][MAXPLAYERS+1];
 
 char g_sDefendVMT[PLATFORM_MAX_PATH];
 char g_sDefendVTF[PLATFORM_MAX_PATH];
@@ -121,6 +120,7 @@ public void OnPluginStart()
 
 	SetCookieMenuItem(ZLeaderCookieHandler, 0, "[ZLeader] Client Setting");
 
+	LoadTranslations("zleader.phrases.txt");
 	HookRadio();
 }
 
@@ -226,9 +226,14 @@ public void ZLeaderSetting(int client)
 {
 	Menu menu = new Menu(ZLeaderSettingHandler, MENU_ACTIONS_ALL);
 
-	menu.SetTitle("[ZLeader] Client Setting");
-	menu.AddItem("shortcut", "Shortcut F Key");
-	menu.AddItem("markerpos", "Marker Position");
+	menu.SetTitle("%T %T", "Menu Prefix", client, "Client Setting", client);
+
+	char shortcut[64], markerpos[64];
+	Format(shortcut, 64, "%T", "Shortcut", client);
+	Format(markerpos, 64, "%T", "Marker Pos", client);
+
+	menu.AddItem("shortcut", shortcut);
+	menu.AddItem("markerpos", markerpos);
 
 	menu.ExitBackButton = true;
 	menu.ExitButton = true;
@@ -246,7 +251,7 @@ public int ZLeaderSettingHandler(Menu menu, MenuAction action, int param1, int p
 			menu.GetItem(param2, info, sizeof(info));
 			if(StrEqual(info, "shortcut"))
 			{
-				Format(display, sizeof(display), "Shortcut F Key : %s", g_bShorcut[param1] ? "Enabled" : "Disable");
+				Format(display, sizeof(display), "%T : %s", "Shortcut", param1, g_bShorcut[param1] ? "%T" : "%T", "Enabled", param1, "Disabled", param1);
 				return RedrawMenuItem(display);
 			}
 
@@ -255,12 +260,12 @@ public int ZLeaderSettingHandler(Menu menu, MenuAction action, int param1, int p
 				char thepos[32];
 
 				if(g_iMarkerPos[param1] == MK_CLIENT)
-					Format(thepos, sizeof(thepos), "Client's Position");
+					Format(thepos, sizeof(thepos), "%T", "Client Position", param1);
 
 				else
-					Format(thepos, sizeof(thepos), "Client's Crosshair");
+					Format(thepos, sizeof(thepos), "%T", "Client Crosshair", param1);
 
-				Format(display, sizeof(display), "Marker Position : %s", thepos);
+				Format(display, sizeof(display), "%T : %s", "Marker Pos", param1, thepos);
 				return RedrawMenuItem(display);
 			}
 		}
@@ -271,20 +276,20 @@ public int ZLeaderSettingHandler(Menu menu, MenuAction action, int param1, int p
 			if(StrEqual(info, "shortcut"))
 			{
 				g_bShorcut[param1] = !g_bShorcut[param1];
-				PrintToChat(param1, " \x04[ZLeader]\x01 You have %s \x01leader shortcut key", g_bShorcut[param1] ? "\x05Enabled" : "\x07Disabled");
+				CPrintToChat(param1, "%T %T", "Prefix", param1, "You set shortcut", param1, g_bShorcut[param1] ? "{lime}%T" : "{red}%T", "Enabled", param1, "Disabled", param1);
 			}
 			else if(StrEqual(info, "markerpos"))
 			{
 				if(g_iMarkerPos[param1] == MK_CLIENT)
 				{
 					g_iMarkerPos[param1] = MK_CROSSHAIR;
-					PrintToChat(param1, " \x04[ZLeader]\x01 You have set Marker to be set at \x0CYour crosshair\x01 position.");
+					CPrintToChat(param1, "%T %T", "Prefix", param1, "Marker Pos Crosshair", param1);
 				}
 
 				else
 				{
 					g_iMarkerPos[param1] = MK_CLIENT;
-					PrintToChat(param1, " \x04[ZLeader]\x01 You have set Marker to be set at \x0CPlayer's\x01 position.");
+					CPrintToChat(param1, "%T %T", "Prefix", param1, "Marker Pos Player Postion", param1);
 				}
 			}
 
@@ -418,7 +423,12 @@ public void OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 	char codename[32];
 	int slot = GetClientLeaderSlot(client);
 	GetLeaderCodename(slot, codename, sizeof(codename));
-	PrintToChatAll(" \x04[ZLeader]\x01 Leader \x10%s\x01 \x07%N\x01 get infected!", codename, client);
+
+	for(int i = 1; i <= MaxClients; i++)
+	{
+		if(IsClientInGame(i))
+			CPrintToChat(i, "%T %T", "Prefix", i, "Has Died", i, codename, client);
+	}
 }
 
 public void OnRoundStart(Event event, const char[] name, bool dontBroadcast)
@@ -440,7 +450,12 @@ public void ZR_OnClientInfected(int client, int attacker, bool motherinfect, boo
 	char codename[32];
 	int slot = GetClientLeaderSlot(client);
 	GetLeaderCodename(slot, codename, sizeof(codename));
-	PrintToChatAll(" \x04[ZLeader]\x01 Leader \x10%s\x01 \x07%N\x01 get infected!", codename, client);
+
+	for(int i = 1; i <= MaxClients; i++)
+	{
+		if(IsClientInGame(i))
+			CPrintToChat(i, "%T %T", "Prefix", i, "Get Infected", i, codename, client);
+	}
 }
 
 /* =========================================================================
@@ -533,6 +548,8 @@ void LoadDownloadTable()
 
 public Action Command_Leader(int client, int args)
 {
+	SetGlobalTransTarget(client);
+
 	if(args == 0)
 	{
 		if(IsClientLeader(client))
@@ -562,7 +579,7 @@ public Action Command_Leader(int client, int args)
 						return Plugin_Stop;
 					}
 
-					ReplyToCommand(client, " \x04[ZLeader]\x01 All Leader slot is full!");
+					CReplyToCommand(client, "%t %t", "Prefix", "Slot is full");
 					return Plugin_Stop;
 				}
 			}
@@ -580,13 +597,13 @@ public Action Command_Leader(int client, int args)
 			if(IsLeaderSlotFree(i))
 			{
 				SetClientLeader(target, client, i);
-				ReplyToCommand(client, " \x04[ZLeader]\x01 You have set leader on \x06%N", target);
+				CReplyToCommand(client, "%t %t", "Prefix", "You set client leader", target);
 				LeaderMenu(target);
 				return Plugin_Handled;
 			}
 		}
 
-		ReplyToCommand(client, " \x04[ZLeader]\x01 All Leader slot is full!");
+		CReplyToCommand(client, "%t %t", "Prefix", "Slot is full");
 		return Plugin_Stop;
 	}
 
@@ -597,13 +614,23 @@ public void LeaderMenu(int client)
 {
 	Menu menu = new Menu(LeaderMenuHandler, MENU_ACTIONS_ALL);
 
-	menu.SetTitle("[ZLeader] Leader menu");
-	menu.AddItem("defend", "Defend Here");
-	menu.AddItem("follow", "Follow Me");
-	menu.AddItem("beacon", "Toggle Beacon");
-	menu.AddItem("marker", "Place Marker");
-	menu.AddItem("removemarker", "Remove Marker");
-	menu.AddItem("resign", "Resign from Leader");
+	menu.SetTitle("%T %T", "Menu Prefix", client, "Menu Leader title", client);
+
+	char defend[64], follow[64], beacon[64], marker[64], removemarker[64], resign[64];
+
+	Format(defend, 64, "%T", "Defend Here", client);
+	Format(follow, 64, "%T", "Follow Me", client);
+	Format(beacon, 64, "%T", "Toggle Beacon", client);
+	Format(marker, 64, "%T", "Place Marker", client);
+	Format(removemarker, 64, "%T", "Remove Marker", client);
+	Format(resign, 64, "%T", "Resign from Leader", client);
+
+	menu.AddItem("defend", defend);
+	menu.AddItem("follow", follow);
+	menu.AddItem("beacon", beacon);
+	menu.AddItem("marker", marker);
+	menu.AddItem("removemarker", removemarker);
+	menu.AddItem("resign", resign);
 
 	menu.ExitButton = true;
 	menu.Display(client, 30);
@@ -623,7 +650,7 @@ public int LeaderMenuHandler(Menu menu, MenuAction action, int param1, int param
 				char display[128];
 				if(g_iClientSprite[param1] == SP_DEFEND)
 				{
-					Format(display, sizeof(display), "Defend Here (√)");
+					Format(display, sizeof(display), "%T (√)", "Defend Here", param1);
 					return RedrawMenuItem(display);
 				}
 			}
@@ -633,7 +660,7 @@ public int LeaderMenuHandler(Menu menu, MenuAction action, int param1, int param
 				char display[128];
 				if(g_iClientSprite[param1] == SP_FOLLOW)
 				{
-					Format(display, sizeof(display), "Follow Me (√)");
+					Format(display, sizeof(display), "%T (√)", "Follow Me", param1);
 					return RedrawMenuItem(display);
 				}
 			}
@@ -643,7 +670,7 @@ public int LeaderMenuHandler(Menu menu, MenuAction action, int param1, int param
 				char display[128];
 				if(g_bBeaconActive[param1])
 				{
-					Format(display, sizeof(display), "Toggle Beacon (√)");
+					Format(display, sizeof(display), "%T (√)", "Toggle Beacon", param1);
 					return RedrawMenuItem(display);
 				}
 			}
@@ -703,7 +730,9 @@ public int LeaderMenuHandler(Menu menu, MenuAction action, int param1, int param
 
 				else if(StrEqual(info, "removemarker", false))
 				{
-					RemoveMarker(param1);
+					for(int i = 0; i < 3; i++)
+						RemoveMarker(param1, i);
+
 					LeaderMenu(param1);
 				}
 
@@ -732,7 +761,7 @@ public Action Command_CurrentLeader(int client, int args)
 {
 	Menu menu = new Menu(CurrentLeaderMenuHandler);
 
-	menu.SetTitle("[ZLeader] Leader list menu");
+	menu.SetTitle("%T %T", "Menu Prefix", client, "Menu Leader list title", client);
 	
 	for(int i = 0; i < MAXLEADER; i++)
 	{
@@ -748,7 +777,7 @@ public Action Command_CurrentLeader(int client, int args)
 		}
 		else
 		{
-			Format(sLine, 128, "%s: None", codename);
+			Format(sLine, 128, "%s: %T", codename, "None", client);
 			menu.AddItem(codename, sLine, ITEMDRAW_DISABLED);
 		}
 	}
@@ -785,13 +814,13 @@ public Action Command_VoteLeader(int client, int args)
 
 	if(count >= 5)
 	{
-		ReplyToCommand(client, " \x04[ZLeader]\x01 All leader slot is now full!");
+		CReplyToCommand(client, "%T %T", "Prefix", client, "Slot is full", client);
 		return Plugin_Handled;
 	}
 
 	if(args < 1)
 	{
-		ReplyToCommand(client, " \x04[ZLeader]\x01 Usage: sm_voteleader <player>");
+		CReplyToCommand(client, "%T %T", "Prefix", client, "Vote leader usage", client);
 		return Plugin_Handled;
 	}
 
@@ -805,13 +834,13 @@ public Action Command_VoteLeader(int client, int args)
 
 	if(GetClientFromSerial(g_iClientVoteWhom[client]) == target)
 	{
-		ReplyToCommand(client, " \x04[ZLeader]\x01 You've already voted for this person!");
+		CReplyToCommand(client, "%T %T", "Prefix", client, "Already vote client", client);
 		return Plugin_Handled;
 	}
 
 	if(ZR_IsClientZombie(target))
 	{
-		ReplyToCommand(client, " \x04[ZLeader]\x01 You have to vote for a human!");
+		ReplyToCommand(client, "%T %T", "Prefix", client, "Has to be human", client);
 		return Plugin_Handled;
 	}
 
@@ -830,7 +859,13 @@ public Action Command_VoteLeader(int client, int args)
 	if(number == 0)
 		number = 1;
 
-	PrintToChatAll(" \x04[ZLeader]\x01 %N has voted for %N to be the leader (%i/%i votes)", client, target, g_iClientGetVoted[target], number);
+	for(int i = 1; i <= MaxClients; i++)
+	{
+		SetGlobalTransTarget(i);
+
+		if(IsClientInGame(i))
+			CPrintToChat(i, "%t %t", "Prefix", "Vote for client", client, target, g_iClientGetVoted[target], number);
+	}
 
 	if(g_iClientGetVoted[target] >= number)
 	{
@@ -838,7 +873,7 @@ public Action Command_VoteLeader(int client, int args)
 
 		if(slot == -1)
 		{
-			ReplyToCommand(client, " \x04[ZLeader]\x01 All leader slot is currently full!");
+			CReplyToCommand(client, "%T %T", "Prefix", client, "Slot is full", client);
 			return Plugin_Handled;
 		}
 		
@@ -868,13 +903,13 @@ public Action Command_RemoveLeader(int client, int args)
 	int target = FindTarget(client, arg, false, false);
 	if (target == -1)
 	{
-		ReplyToCommand(client, " \x04[ZLeader]\x01 Invalid client.");
+		CReplyToCommand(client, "%T %T", "Prefix", client, "Invalid client", client);
 		return Plugin_Handled;
 	}
 
 	if(!IsClientLeader(target))
 	{
-		ReplyToCommand(client, " \x04[ZLeader]\x01 %N is not the leader!", target);
+		CReplyToCommand(client, "%T %T", "Prefix", client, "Client is not leader", client, target);
 		return Plugin_Handled;
 	}
 
@@ -884,9 +919,12 @@ public Action Command_RemoveLeader(int client, int args)
 
 public void RemoveLeaderList(int client)
 {
+	SetGlobalTransTarget(client);
 	Menu menu = new Menu(RemoveLeaderListMenuHandler);
 
-	menu.SetTitle("[ZLeader] Leader list menu \nSelect leader to remove them");
+	char title[128];
+	Format(title, sizeof(title), "%t %t \n%t", "Menu Prefix", "Menu Leader list title", "Menu Remove Leader title");
+	menu.SetTitle("%s", title);
 	
 	for(int i = 0; i < MAXLEADER; i++)
 	{
@@ -902,7 +940,7 @@ public void RemoveLeaderList(int client)
 		}
 		else
 		{
-			Format(sLine, 128, "%s: None", codename);
+			Format(sLine, 128, "%s: %t", codename, "None");
 			menu.AddItem(codename, sLine, ITEMDRAW_DISABLED);
 		}
 	}
@@ -1085,10 +1123,17 @@ public void MarkerMenu(int client)
 {
 	Menu menu = new Menu(MarkerMenuHandler, MENU_ACTIONS_ALL);
 
-	menu.SetTitle("[ZLeader] Marker Menu Option");
-	menu.AddItem("normal", "Marker Only");
-	menu.AddItem("zmtp", "ZM Teleport");
-	menu.AddItem("nohug", "No Doorhug");
+	menu.SetTitle("%T %T", "Menu Prefix", client, "Marker menu title", client);
+
+	char normal[64], zmtp[64], nohug[64];
+
+	Format(normal, 64, "%T", "Marker Only", client);
+	Format(zmtp, 64, "%T", "ZM Teleport", client);
+	Format(nohug, 64, "%T", "No Doorhug", client);
+
+	menu.AddItem("normal", normal);
+	menu.AddItem("zmtp", zmtp);
+	menu.AddItem("nohug", nohug);
 
 	menu.ExitBackButton = true;
 	menu.ExitButton = true;
@@ -1107,27 +1152,27 @@ public int MarkerMenuHandler(Menu menu, MenuAction action, int param1, int param
 
 			if(StrEqual(info, "normal"))
 			{
-				if(g_iClientMarkerType[param1] == MK_NORMAL)
+				if(g_iClientMarker[MK_NORMAL][param1] != -1)
 				{
-					Format(display, sizeof(display), "Marker Only (√)");
+					Format(display, sizeof(display), "%T (√)", "Marker Only", param1);
 					return RedrawMenuItem(display);
 				}
 			}
 
 			else if(StrEqual(info, "zmtp"))
 			{
-				if(g_iClientMarkerType[param1] == MK_ZMTP)
+				if(g_iClientMarker[MK_ZMTP][param1] != -1)
 				{
-					Format(display, sizeof(display), "ZM Teleport (√)");
+					Format(display, sizeof(display), "%T (√)", "ZM Teleport", param1);
 					return RedrawMenuItem(display);
 				}
 			}
 
 			else if(StrEqual(info, "nohug"))
 			{
-				if(g_iClientMarkerType[param1] == MK_NOHUG)
+				if(g_iClientMarker[MK_NOHUG][param1] != -1)
 				{
-					Format(display, sizeof(display), "No Doorhug (√)");
+					Format(display, sizeof(display), "%T (√)", "No Doorhug", param1);
 					return RedrawMenuItem(display);
 				}
 			}
@@ -1137,24 +1182,31 @@ public int MarkerMenuHandler(Menu menu, MenuAction action, int param1, int param
 			char info[64];
 			menu.GetItem(param2, info, sizeof(info));
 
-			RemoveMarker(param1);
-
 			if(StrEqual(info, "normal"))
 			{
-				g_iClientMarkerType[param1] = MK_NORMAL;
-				SpawnMarker(param1, MK_NORMAL);
+				if(g_iClientMarker[MK_NORMAL][param1] != -1)
+					RemoveMarker(param1, MK_NORMAL);
+
+				else
+					SpawnMarker(param1, MK_NORMAL);
 			}
 
 			else if(StrEqual(info, "zmtp"))
 			{
-				g_iClientMarkerType[param1] = MK_ZMTP;
-				SpawnMarker(param1, MK_ZMTP);
+				if(g_iClientMarker[MK_ZMTP][param1] != -1)
+					RemoveMarker(param1, MK_ZMTP);
+
+				else
+					SpawnMarker(param1, MK_ZMTP);
 			}
 
 			else if(StrEqual(info, "nohug"))
 			{
-				g_iClientMarkerType[param1] = MK_NOHUG;
-				SpawnMarker(param1, MK_NOHUG);
+				if(g_iClientMarker[MK_NOHUG][param1] != -1)
+					RemoveMarker(param1, MK_NOHUG);
+
+				else
+					SpawnMarker(param1, MK_NOHUG);
 			}
 
 			MarkerMenu(param1);
@@ -1171,45 +1223,44 @@ public int MarkerMenuHandler(Menu menu, MenuAction action, int param1, int param
 	return 0;
 }
 
-public void RemoveMarker(int client)
+public void RemoveMarker(int client, int type)
 {
-	if (g_iClientMarker[client] != -1 && IsValidEdict(g_iClientMarker[client]))
+	if (g_iClientMarker[type][client] != -1 && IsValidEdict(g_iClientMarker[type][client]))
 	{
 		char m_szClassname[64];
-		GetEdictClassname(g_iClientMarker[client], m_szClassname, sizeof(m_szClassname));
+		GetEdictClassname(g_iClientMarker[type][client], m_szClassname, sizeof(m_szClassname));
 
 		if(strcmp("prop_dynamic", m_szClassname) == 0)
-			AcceptEntityInput(g_iClientMarker[client], "Kill");
+			AcceptEntityInput(g_iClientMarker[type][client], "Kill");
 
-		if (markerEntities[client] != -1 && IsValidEdict(markerEntities[client]))
+		if (markerEntities[type][client] != -1 && IsValidEdict(markerEntities[type][client]))
 		{
-			GetEdictClassname(markerEntities[client], m_szClassname, sizeof(m_szClassname));
+			GetEdictClassname(markerEntities[type][client], m_szClassname, sizeof(m_szClassname));
 
 			if(strcmp("env_sprite", m_szClassname) == 0)
-				AcceptEntityInput(markerEntities[client], "Kill");
+				AcceptEntityInput(markerEntities[type][client], "Kill");
 		}
 	}
 
-	g_iClientMarker[client] = -1;
-	markerEntities[client] = -1;
-	g_iClientMarkerType[client] = MK_NONE;
+	g_iClientMarker[type][client] = -1;
+	markerEntities[type][client] = -1;
 }
 
 public void SpawnMarker(int client, int type)
 {
 	if (type == MK_NORMAL)
-		markerEntities[client] = SpawnSpecialMarker(client, g_sMarkerArrowVMT);
+		markerEntities[type][client] = SpawnSpecialMarker(client, g_sMarkerArrowVMT);
 
 	else if(type == MK_ZMTP)
-		markerEntities[client] = SpawnSpecialMarker(client, g_sMarkerZMTP_VMT);
+		markerEntities[type][client] = SpawnSpecialMarker(client, g_sMarkerZMTP_VMT);
 
 	else
-		markerEntities[client] = SpawnSpecialMarker(client, g_sMarkerNoHug_VMT);
+		markerEntities[type][client] = SpawnSpecialMarker(client, g_sMarkerNoHug_VMT);
 
-	g_iClientMarker[client] = SpawnAimMarker(client, g_sMarkerModel);
+	g_iClientMarker[type][client] = SpawnAimMarker(client, g_sMarkerModel, type);
 }
 
-public int SpawnAimMarker(int client, char[] model)
+public int SpawnAimMarker(int client, char[] model, int type)
 {
 	if(!IsPlayerAlive(client))
 	{
@@ -1234,10 +1285,10 @@ public int SpawnAimMarker(int client, char[] model)
 	DispatchKeyValue(Ent, "rendercolor", "255 255 255");
 	DispatchSpawn(Ent);
 
-	if(g_iClientMarkerType[client] == MK_NORMAL)
+	if(type == MK_NORMAL)
 		SetEntityRenderColor(Ent, g_iColorArrow[0], g_iColorArrow[1], g_iColorArrow[2], g_iColorArrow[3]);
 
-	else if(g_iClientMarkerType[client] == MK_NOHUG)
+	else if(type  == MK_NOHUG)
 		SetEntityRenderColor(Ent, g_iColorNoHug[0], g_iColorNoHug[1], g_iColorNoHug[2], g_iColorNoHug[3]);
 
 	else
@@ -1404,20 +1455,23 @@ void SetClientLeader(int client, int adminset = -1, int slot)
 	if(!IsClientInGame(client))
 	{
 		if(adminset != -1)
-			ReplyToCommand(adminset, " \x04[ZLeader]\x01 Invalid client.");
+			CReplyToCommand(adminset, "%T %T", "Prefix", client, "Invalid client", client);
 
 		return;
 	}
 
 	char codename[32];
 	GetLeaderCodename(slot, codename, sizeof(codename));
-	PrintToChatAll(" \x04[ZLeader]\x01 \x0B%N\x01 has become a new \x10Leader %s\x01!", client, codename);
+
+	for(int i = 1; i <= MaxClients; i++)
+	{
+		CPrintToChat(i, "%T %T", "Prefix", i, "Become New Leader", i, client, codename);
+	}
 
 	g_bClientLeader[client] = true;
 	g_iClientLeaderSlot[client] = slot;
 	g_iCurrentLeader[slot] = client;
 	g_iClientSprite[client] = SP_NONE;
-	g_iClientMarkerType[client] = MK_NONE;
 }
 
 void RemoveLeader(int client, ResignReason reason, bool announce)
@@ -1426,11 +1480,16 @@ void RemoveLeader(int client, ResignReason reason, bool announce)
 	int slot = GetClientLeaderSlot(client);
 	GetLeaderCodename(slot, codename, sizeof(codename));
 
-	RemoveMarker(client);
+	for(int i = 0; i < 3; i++)
+		RemoveMarker(client, i);
+
 	RemoveSprite(client);
 
 	if(g_bBeaconActive[client])
+	{
 		ToggleBeacon(client);
+		KillBeacon(client);
+	}
 
 	g_bClientLeader[client] = false;
 	g_iCurrentLeader[g_iClientLeaderSlot[client]] = -1;
@@ -1441,31 +1500,36 @@ void RemoveLeader(int client, ResignReason reason, bool announce)
 
 	if(announce)
 	{
-		switch (reason)
+		for(int i = 1; i < MaxClients; i++)
 		{
-			case R_DISCONNECTED:
+			SetGlobalTransTarget(i);
+
+			switch (reason)
 			{
-				PrintToChatAll(" \x04[ZLeader]\x01 Leader \x10%s\x01 \x07%N\x01 has disconnected from the server!", codename, client);
-			}
-			case R_ADMINFORCED:
-			{
-				PrintToChatAll(" \x04[ZLeader]\x01 Leader \x10%s\x01 \x07%N\x01 has been resigned by admin!", codename, client);
-			}
-			case R_SELFRESIGN:
-			{
-				PrintToChatAll(" \x04[ZLeader]\x01 Leader \x10%s\x01 \x07%N\x01 has resigned by him/herself!", codename, client);
-			}
-			case R_SPECTATOR:
-			{
-				PrintToChatAll(" \x04[ZLeader]\x01 Leader \x10%s\x01 \x07%N\x01 has been resigned for moving to spectator!", codename, client);
-			}
-			case R_DIED:
-			{
-				PrintToChatAll(" \x04[ZLeader]\x01 Leader \x10%s\x01 \x07%N\x01 is died and get resigned!", codename, client);
-			}
-			case R_INFECTED:
-			{
-				PrintToChatAll(" \x04[ZLeader]\x01 Leader \x10%s\x01 \x07%N\x01 get infected and get resigned!", codename, client);
+				case R_DISCONNECTED:
+				{
+					PrintToChat(i, "%t %t", "Prefix", "Remove Disconnected", codename, client);
+				}
+				case R_ADMINFORCED:
+				{
+					PrintToChat(i, "%t %t", "Prefix", "Remove Admin Force", codename, client);
+				}
+				case R_SELFRESIGN:
+				{
+					PrintToChat(i, "%t %t", "Prefix", "Remove Self Resign", codename, client);
+				}
+				case R_SPECTATOR:
+				{
+					PrintToChat(i, "%t %t", "Prefix", "Remove Spectator", codename, client);
+				}
+				case R_DIED:
+				{
+					PrintToChat(i, "%t %t", "Prefix", "Remove Died", codename, client);
+				}
+				case R_INFECTED:
+				{
+					PrintToChat(i, "%t %t", "Prefix", "Remove Infected", codename, client);
+				}
 			}
 		}
 	}
