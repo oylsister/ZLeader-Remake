@@ -52,44 +52,44 @@
 	"Become New Leader"
 	{
 		"#format" "{1:N},{2:s}"
-		"en"	"{lightblue}{1} has become new {orange}Leader {2}{default}!"
+		"en"	"{lightblue}{1}{default} has become new {orange}Leader {2}{default}!"
 	}
 
 	// Remove Reason
 	"Remove Disconnected"
 	{
 		"#format" "{1:s},{2:N}"
-		"en"	"Leader {oranage}{1}{default} {lightred}{2}{default} has disconnected from the server!"
+		"en"	"Leader {orange}{1}{default} {lightred}{2}{default} has disconnected from the server!"
 	}
 
 	"Remove Admin Force"
 	{
 		"#format" "{1:s},{2:N}"
-		"en"	"Leader {oranage}{1}{default} {lightred}{2}{default} has been resigned by admin!"
+		"en"	"Leader {orange}{1}{default} {lightred}{2}{default} has been resigned by admin!"
 	}
 
 	"Remove Self Resign"
 	{
 		"#format" "{1:s},{2:N}"
-		"en"	"Leader {oranage}{1}{default} {lightred}{2}{default} has resigned by him/herself!"
+		"en"	"Leader {orange}{1}{default} {lightred}{2}{default} has resigned by him/herself!"
 	}
 
 	"Remove Spectator"
 	{
 		"#format" "{1:s},{2:N}"
-		"en"	"Leader {oranage}{1}{default} {lightred}{2}{default} has been resigned for moving to spectator!"
+		"en"	"Leader {orange}{1}{default} {lightred}{2}{default} has been resigned for moving to spectator!"
 	}
 
 	"Remove Died"
 	{
 		"#format" "{1:s},{2:N}"
-		"en"	"Leader {oranage}{1}{default} {lightred}{2}{default} is died and get resigned!"
+		"en"	"Leader {orange}{1}{default} {lightred}{2}{default} is died and get resigned!"
 	}
 
 	"Remove Infected"
 	{
 		"#format" "{1:s},{2:N}"
-		"en"	"Leader {oranage}{1}{default} {lightred}{2}{default} get infected and get resigned!"
+		"en"	"Leader {orange}{1}{default} {lightred}{2}{default} get infected and get resigned!"
 	}
 
 
@@ -194,6 +194,16 @@
 	"Disabled"
 	{
 		"en"	"Disabled"
+	}
+
+	"Enabled Chat"
+	{
+		"en"	"{lime}Enabled"
+	}
+
+	"Disabled Chat"
+	{
+		"en"	"{lightred}Disabled"
 	}
 
 	"Client Position"

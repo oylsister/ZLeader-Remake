@@ -251,7 +251,12 @@ public int ZLeaderSettingHandler(Menu menu, MenuAction action, int param1, int p
 			menu.GetItem(param2, info, sizeof(info));
 			if(StrEqual(info, "shortcut"))
 			{
-				Format(display, sizeof(display), "%T : %s", "Shortcut", param1, g_bShorcut[param1] ? "%T" : "%T", "Enabled", param1, "Disabled", param1);
+				if(g_bShorcut[param1])
+					Format(display, sizeof(display), "%T : %T", "Shortcut", param1, "Enabled", param1);
+
+				else
+					Format(display, sizeof(display), "%T : %T", "Shortcut", param1, "Disabled", param1);
+
 				return RedrawMenuItem(display);
 			}
 
@@ -275,8 +280,16 @@ public int ZLeaderSettingHandler(Menu menu, MenuAction action, int param1, int p
 			menu.GetItem(param2, info, sizeof(info));
 			if(StrEqual(info, "shortcut"))
 			{
+				char status[32];
 				g_bShorcut[param1] = !g_bShorcut[param1];
-				CPrintToChat(param1, "%T %T", "Prefix", param1, "You set shortcut", param1, g_bShorcut[param1] ? "{lime}%T" : "{red}%T", "Enabled", param1, "Disabled", param1);
+
+				if(g_bShorcut[param1])
+					Format(status, 64, "%T", "Enabled Chat", param1);
+
+				else
+					Format(status, 64, "%T", "Disabled Chat", param1);
+
+				CPrintToChat(param1, "%T %T", "Prefix", param1, "You set shortcut", param1, status);
 			}
 			else if(StrEqual(info, "markerpos"))
 			{
@@ -1465,7 +1478,13 @@ void SetClientLeader(int client, int adminset = -1, int slot)
 
 	for(int i = 1; i <= MaxClients; i++)
 	{
-		CPrintToChat(i, "%T %T", "Prefix", i, "Become New Leader", i, client, codename);
+		if(IsClientInGame(i))
+			CPrintToChat(i, "%T %T", "Prefix", i, "Become New Leader", i, client, codename);
+	}
+
+	for(int i; i < 3; i++)
+	{
+		g_iClientMarker[i][client] = -1;
 	}
 
 	g_bClientLeader[client] = true;
@@ -1502,33 +1521,36 @@ void RemoveLeader(int client, ResignReason reason, bool announce)
 	{
 		for(int i = 1; i < MaxClients; i++)
 		{
+			if(!IsClientInGame(i))
+				continue;
+				
 			SetGlobalTransTarget(i);
 
 			switch (reason)
 			{
 				case R_DISCONNECTED:
 				{
-					PrintToChat(i, "%t %t", "Prefix", "Remove Disconnected", codename, client);
+					CPrintToChat(i, "%t %t", "Prefix", "Remove Disconnected", codename, client);
 				}
 				case R_ADMINFORCED:
 				{
-					PrintToChat(i, "%t %t", "Prefix", "Remove Admin Force", codename, client);
+					CPrintToChat(i, "%t %t", "Prefix", "Remove Admin Force", codename, client);
 				}
 				case R_SELFRESIGN:
 				{
-					PrintToChat(i, "%t %t", "Prefix", "Remove Self Resign", codename, client);
+					CPrintToChat(i, "%t %t", "Prefix", "Remove Self Resign", codename, client);
 				}
 				case R_SPECTATOR:
 				{
-					PrintToChat(i, "%t %t", "Prefix", "Remove Spectator", codename, client);
+					CPrintToChat(i, "%t %t", "Prefix", "Remove Spectator", codename, client);
 				}
 				case R_DIED:
 				{
-					PrintToChat(i, "%t %t", "Prefix", "Remove Died", codename, client);
+					CPrintToChat(i, "%t %t", "Prefix", "Remove Died", codename, client);
 				}
 				case R_INFECTED:
 				{
-					PrintToChat(i, "%t %t", "Prefix", "Remove Infected", codename, client);
+					CPrintToChat(i, "%t %t", "Prefix", "Remove Infected", codename, client);
 				}
 			}
 		}
