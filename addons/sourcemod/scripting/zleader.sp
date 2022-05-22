@@ -59,8 +59,6 @@ char g_sMarkerNoHug_VMT[PLATFORM_MAX_PATH];
 char g_sMarkerNoHug_VTF[PLATFORM_MAX_PATH];
 int g_iColorNoHug[4];
 
-bool g_bVIPAccess[MAXPLAYERS+1] = false;
-
 float g_pos[3];
 
 #define SP_NONE -1
@@ -169,33 +167,6 @@ public void OnLibraryAdded(const char[] name)
 
 	if(StrEqual(name, "ccc"))
 		g_ccc = true;
-}
-
-/* =========================================================================
-||
-||  VIP
-||
-============================================================================ */
-
-public void VIP_OnClientLoaded(int client, bool isVIP)
-{
-	if(!vipcore)
-		return;
-
-	if(isVIP)
-	{
-		char group[64];
-		VIP_GetClientVIPGroup(client, group, 64);
-
-		if(!StrEqual(group, "Supporter", false))
-		{
-			g_bVIPAccess[client] = true;
-		}
-	}
-	else
-	{
-		g_bVIPAccess[client] = false;
-	}
 }
 
 /* =========================================================================
@@ -591,7 +562,7 @@ public Action Command_Leader(int client, int args)
 			}
 		}
 
-		if(IsClientAdmin(client) || (vipcore && g_bVIPAccess[client]))
+		if(IsClientAdmin(client) || IsClientVIP(client))
 		{
 			if(!IsClientLeader(client))
 			{
@@ -1652,6 +1623,30 @@ stock bool IsValidClient(int client, bool nobots = true)
 		return false;
 	}
 	return IsClientInGame(client);
+}
+
+/* =========================================================================
+||
+||  VIP
+||
+============================================================================ */
+
+stock bool IsClientVIP(int client)
+{
+	if(!vipcore)
+		return false;
+
+	char group[64];
+	bool vip = VIP_GetClientVIPGroup(client, group, 64);
+
+	if(!vip)
+		return false;
+
+	if(!StrEqual(group, "Supporter", false))
+		return false;
+
+	else
+		return true;
 }
 
 /* =========================================================================
