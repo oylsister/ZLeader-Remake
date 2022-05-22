@@ -6,15 +6,21 @@
 #include <clientprefs>
 #include <multicolors>
 #include <zombiereloaded>
-#include <scp>
 #include <zleader>
 
+// If you want to use Simple Chat-Processor make sure CCC is unloaded
+// If you want to use CCC make sure Simple Chat-Processor is unloaded
 #undef REQUIRE_PLUGIN
+#include <scp>
 #include <vip_core>
+#include <ccc>
 
 #pragma newdecls required
 
 bool vipcore;
+bool g_ccc;
+
+char szClientTag[MAXPLAYERS+1][64];
 
 // Status
 int g_iCurrentLeader[MAXLEADER] = {-1, -1, -1, -1, -1};
@@ -132,6 +138,10 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 	CreateNative("ZL_GetClientLeaderSlot", Native_RemoveLeader);
 	CreateNative("ZL_IsLeaderSlotFree", Native_IsLeaderSlotFree);
 
+	MarkNativeAsOptional("CCC_GetTag");
+	MarkNativeAsOptional("CCC_SetTag");
+	MarkNativeAsOptional("CCC_ResetTag");
+
 	RegPluginLibrary("zleader");
 
 	return APLRes_Success;
@@ -140,18 +150,25 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 public void OnAllPluginsLoaded()
 {
 	vipcore = LibraryExists("vip_core");
+	g_ccc = LibraryExists("ccc");
 }
 
 public void OnLibraryRemoved(const char[] name)
 {
 	if(StrEqual(name, "vip_core"))
 		vipcore = false;
+
+	if(StrEqual(name, "ccc"))
+		g_ccc = true;
 }
 
 public void OnLibraryAdded(const char[] name)
 {
 	if(StrEqual(name, "vip_core"))
 		vipcore = true;
+
+	if(StrEqual(name, "ccc"))
+		g_ccc = true;
 }
 
 /* =========================================================================
@@ -1388,6 +1405,29 @@ public Action OnChatMessage(int &client, ArrayList recipient, char[] name, char[
 	return Plugin_Continue;
 }
 
+void SetClientChat(int client, int slot)
+{
+	CCC_GetTag(client, szClientTag[client], 64);
+
+	CCC_ResetTag(client);
+
+	char codename[32];
+	GetLeaderCodename(slot , codename, 32);
+
+	char newtag[64];
+	Format(newtag, 64, "{darkred}[{orange}Leader %s{darkred}] ", codename);
+	CCC_SetTag(client, newtag);
+}
+
+void RemoveClientChat(int client)
+{
+	if(strlen(szClientTag[client]) <= 0)
+		CCC_ResetTag(client);
+
+	else
+		CCC_SetTag(client, szClientTag[client]);
+}
+
 void HookRadio()
 {
 	AddCommandListener(Radio, "compliment");
@@ -1476,6 +1516,9 @@ void SetClientLeader(int client, int adminset = -1, int slot)
 	char codename[32];
 	GetLeaderCodename(slot, codename, sizeof(codename));
 
+	if(g_ccc)
+		SetClientChat(client, slot);
+
 	for(int i = 1; i <= MaxClients; i++)
 	{
 		if(IsClientInGame(i))
@@ -1503,6 +1546,9 @@ void RemoveLeader(int client, ResignReason reason, bool announce)
 		RemoveMarker(client, i);
 
 	RemoveSprite(client);
+
+	if(g_ccc)
+		RemoveClientChat(client);
 
 	if(g_bBeaconActive[client])
 	{
