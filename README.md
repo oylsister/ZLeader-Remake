@@ -6,4 +6,4 @@
 - Support to 5 Max Leaders.
 - Simplified Menu Navigator for Leader and Admin Menu for Leader Management.
 
-Like my work? Support me here: [![paypal](https://paypal.me/oylsister)
+Like my work? Support me here: [![paypal](https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif)](https://paypal.me/oylsister)
