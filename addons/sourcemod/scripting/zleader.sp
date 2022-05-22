@@ -1293,7 +1293,7 @@ public int SpawnAimMarker(int client, char[] model, int type)
 		GetPlayerEye(client, g_pos);
 
 	else
-		GetClientEyePosition(client, g_pos);
+		GetClientAbsOrigin(client, g_pos);
 
 
 	DispatchKeyValue(Ent, "model", model);
