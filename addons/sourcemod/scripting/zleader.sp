@@ -622,6 +622,18 @@ public Action Command_Leader(int client, int args)
 	int target = FindTarget(client, sArg, false, false);
 	if (target != -1)
 	{
+		if(IsClientLeader(target))
+		{
+			ReplyToCommand(client, "%t %t", "Prefix", "Already Leader", target);
+			return Plugin_Handled;
+		}
+
+		if(ZR_IsClientZombie(target))
+		{
+			ReplyToCommand(client, "%t %t", "Prefix", "It's Zombie");
+			return Plugin_Handled;
+		}
+
 		for(int i = 0; i < MAXLEADER; i++)
 		{
 			if(IsLeaderSlotFree(i))
@@ -871,6 +883,12 @@ public Action Command_VoteLeader(int client, int args)
 	if(ZR_IsClientZombie(target))
 	{
 		ReplyToCommand(client, "%T %T", "Prefix", client, "Has to be human", client);
+		return Plugin_Handled;
+	}
+
+	if(IsClientLeader(target))
+	{
+		ReplyToCommand(client, "%T %T", "Prefix", client, "Already Leader", client);
 		return Plugin_Handled;
 	}
 

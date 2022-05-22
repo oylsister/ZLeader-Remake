@@ -27,9 +27,20 @@
 		"en"    "You've already voted for this person!"
 	}
 
+	"Already Leader"
+	{
+		"#format"	"{1:N}"
+		"en"	"{lightred}{1}{default} is already leader!"
+	}
+
 	"Has to be human"
 	{
 		"en"    "You have to vote for a human!"
+	}
+
+	"It's Zombie"
+	{
+		"en"	"Target is zombie!"
 	}
 
 	"Vote for client"
