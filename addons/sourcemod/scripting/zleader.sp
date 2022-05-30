@@ -125,6 +125,7 @@ public void OnPluginStart()
 	SetCookieMenuItem(ZLeaderCookieHandler, 0, "[ZLeader] Client Setting");
 
 	LoadTranslations("zleader.phrases.txt");
+	LoadTranslations("common.phrases.txt");
 	HookRadio();
 }
 
@@ -595,13 +596,13 @@ public Action Command_Leader(int client, int args)
 	{
 		if(IsClientLeader(target))
 		{
-			ReplyToCommand(client, "%t %t", "Prefix", "Already Leader", target);
+			CReplyToCommand(client, "%t %t", "Prefix", "Already Leader", target);
 			return Plugin_Handled;
 		}
 
 		if(ZR_IsClientZombie(target))
 		{
-			ReplyToCommand(client, "%t %t", "Prefix", "It's Zombie");
+			CReplyToCommand(client, "%t %t", "Prefix", "It's Zombie");
 			return Plugin_Handled;
 		}
 
@@ -853,13 +854,13 @@ public Action Command_VoteLeader(int client, int args)
 
 	if(ZR_IsClientZombie(target))
 	{
-		ReplyToCommand(client, "%T %T", "Prefix", client, "Has to be human", client);
+		CReplyToCommand(client, "%T %T", "Prefix", client, "Has to be human", client);
 		return Plugin_Handled;
 	}
 
 	if(IsClientLeader(target))
 	{
-		ReplyToCommand(client, "%T %T", "Prefix", client, "Already Leader", client);
+		CReplyToCommand(client, "%T %T", "Prefix", client, "Already Leader", client);
 		return Plugin_Handled;
 	}
 
@@ -1338,7 +1339,7 @@ public int SpawnSpecialMarker(int client, char[] sprite)
 
 	else
 	{
-		GetClientEyePosition(client, g_pos);
+		GetClientAbsOrigin(client, g_pos);
 		g_pos[2] += 80.0;
 	}
 
