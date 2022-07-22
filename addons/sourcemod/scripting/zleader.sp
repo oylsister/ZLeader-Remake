@@ -95,7 +95,7 @@ public Plugin myinfo =
 	name = "ZLeader Remake",
 	author = "Oylsister Original from ZR-Leader by AntiTeal, nuclear silo, CNTT, colia",
 	description = "Allows for a human to be a leader, and give them special functions with it.",
-	version = "2.0",
+	version = "2.1",
 	url = "https://github.com/oylsister/ZLeader-Remake"
 };
 
@@ -873,6 +873,7 @@ public Action Command_VoteLeader(int client, int args)
 	}
 
 	g_iClientGetVoted[target]++;
+	g_iClientVoteWhom[client] = GetClientSerial(target);
 
 	int number = GetClientCount(true)/10;
 
