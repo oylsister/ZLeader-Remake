@@ -35,7 +35,7 @@ ConVar g_Cvar_RemoveOnDie;
 bool g_bRemoveOnDie;
 
 // Leader Marker and Sprite
-int g_iClientSprite[MAXPLAYERS+1] = -1;
+int g_iClientSprite[MAXPLAYERS+1] = {-1, ...};
 int spriteEntities[MAXPLAYERS+1];
 int g_iClientMarker[3][MAXPLAYERS+1];
 int markerEntities[3][MAXPLAYERS+1];
@@ -70,11 +70,11 @@ float g_pos[3];
 #define MK_ZMTP 1
 #define MK_NOHUG 2
 
-int g_iButtoncount[MAXPLAYERS+1] = 0;
+int g_iButtoncount[MAXPLAYERS+1] = {0, ... };
 
 // Beacon
-bool g_bBeaconActive[MAXPLAYERS+1] = false;
-int g_BeaconSerial[MAXPLAYERS+1] = { 0, ... };
+bool g_bBeaconActive[MAXPLAYERS+1] = {false, ...};
+int g_BeaconSerial[MAXPLAYERS+1] = {0, ... };
 int g_BeamSprite = -1;
 int g_HaloSprite = -1;
 int g_Serial_Gen = 0;
@@ -798,6 +798,7 @@ public Action Command_CurrentLeader(int client, int args)
 
 	menu.ExitButton = true;
 	menu.Display(client, MENU_TIME_FOREVER);
+	return Plugin_Handled;
 }
 
 public int CurrentLeaderMenuHandler(Menu menu, MenuAction action, int param1, int param2)
@@ -809,6 +810,7 @@ public int CurrentLeaderMenuHandler(Menu menu, MenuAction action, int param1, in
 			delete menu;
 		}
 	}
+	return 0;
 }
 
 /* =========================================================================
@@ -968,6 +970,7 @@ public void RemoveLeaderList(int client)
 
 	menu.ExitButton = true;
 	menu.Display(client, MENU_TIME_FOREVER);
+	return;
 }
 
 public int RemoveLeaderListMenuHandler(Menu menu, MenuAction action, int param1, int param2)
@@ -988,6 +991,7 @@ public int RemoveLeaderListMenuHandler(Menu menu, MenuAction action, int param1,
 			delete menu;
 		}
 	}
+	return 0;
 }
 
 /* =========================================================================
@@ -1616,6 +1620,7 @@ public Action QuickCommand(int client, const char[] command, int argc)
 public Action ResetButtonPressed(Handle timer, any client)
 {
 	g_iButtoncount[client] = 0;
+	return Plugin_Handled;
 }
 
 stock bool IsValidClient(int client, bool nobots = true)
@@ -1663,6 +1668,7 @@ public int Native_SetLeader(Handle hPlugins, int numParams)
 	int slot = GetNativeCell(2);
 
 	SetClientLeader(client, -1, slot);
+	return 0;
 }
 
 public int Native_IsClientLeader(Handle hPlugins, int numParams)
@@ -1680,11 +1686,11 @@ public int Native_RemoveLeader(Handle hPlugins, int numParams)
 
 	if(!IsClientLeader(client))
 	{
-		ThrowNativeError(1, "the client %N is not the leader", client);
-		return;
+		return ThrowNativeError(1, "the client %N is not the leader", client);
 	}
 
 	RemoveLeader(client, reason, announce);
+	return 0;
 }
 
 public int Native_GetClientLeaderSlot(Handle hPlugins, int numParams)
