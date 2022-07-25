@@ -1531,7 +1531,7 @@ void SetClientLeader(int client, int adminset = -1, int slot)
 	g_iClientSprite[client] = SP_NONE;
 }
 
-void RemoveLeader(int client, ResignReason reason, bool announce)
+void RemoveLeader(int client, ResignReason reason, bool announce = true)
 {
 	char codename[32];
 	int slot = GetClientLeaderSlot(client);
@@ -1557,6 +1557,17 @@ void RemoveLeader(int client, ResignReason reason, bool announce)
 	g_iClientGetVoted[client] = 0;
 	g_iClientSprite[client] = -1;
 	g_bBeaconActive[client] = false;
+
+	for(int i = 1; i <= MaxClients; i++)
+	{
+		if(!IsClientInGame(i))
+			continue;
+			
+		if(GetClientFromSerial(g_iClientVoteWhom[i]) == client)
+		{
+			g_iClientVoteWhom[i] = -1;
+		}
+	}
 
 	if(announce)
 	{
