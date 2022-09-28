@@ -127,6 +127,15 @@ public void OnPluginStart()
 	LoadTranslations("zleader.phrases.txt");
 	LoadTranslations("common.phrases.txt");
 	HookRadio();
+	
+	for(int i = 1; i < MaxClients; i++)
+	{
+		if(IsClientInGame(i))
+		{
+			if(!AreClientCookiesCached(i))
+				OnClientCookiesCached(i);
+		}
+	}
 }
 
 public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max)
