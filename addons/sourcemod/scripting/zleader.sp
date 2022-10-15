@@ -109,6 +109,8 @@ public void OnPluginStart()
 	RegConsoleCmd("sm_voteleader", Command_VoteLeader);
 	RegConsoleCmd("sm_vl", Command_VoteLeader);
 	RegAdminCmd("sm_removeleader", Command_RemoveLeader, ADMFLAG_BAN);
+	RegConsoleCmd("sm_mark", Command_Marker);
+	RegConsoleCmd("sm_marker", Command_Marker);
 
 	AddCommandListener(QuickCommand, "+lookatweapon");
 
@@ -1153,6 +1155,17 @@ public int AttachSprite(int client, char[] sprite) //https://forums.alliedmods.n
 ||
 ============================================================================ */
 
+public Action Command_Marker(int client, int args)
+{
+	if(IsClientLeader(client))
+	{
+		MarkerMenu(client);
+		return Plugin_Handled;
+	}
+
+	return Plugin_Handled;
+}
+
 public void MarkerMenu(int client)
 {
 	Menu menu = new Menu(MarkerMenuHandler, MENU_ACTIONS_ALL);
@@ -1529,7 +1542,7 @@ void SetClientLeader(int client, int adminset = -1, int slot)
 			CPrintToChat(i, "%T %T", "Prefix", i, "Become New Leader", i, client, codename);
 	}
 
-	for(int i; i < 3; i++)
+	for(int i = 0; i < 3; i++)
 	{
 		g_iClientMarker[i][client] = -1;
 	}
