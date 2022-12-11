@@ -21,7 +21,7 @@ enum ResignReason
 	R_INFECTED = 5
 }
 
-native void ZL_SetLeader(int client);
+native void ZL_SetLeader(int client, int slot);
 native bool ZL_IsClientLeader(int client);
 native void ZL_RemoveLeader(int client, ResignReason reason, bool announce);
 native int ZL_GetClientLeaderSlot(int client);
