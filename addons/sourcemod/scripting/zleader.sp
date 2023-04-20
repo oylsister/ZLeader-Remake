@@ -32,7 +32,9 @@ int g_iClientVoteWhom[MAXPLAYERS+1];
 
 // ConVar
 ConVar g_Cvar_RemoveOnDie;
+ConVar g_Cvar_RemoveOnRoundEnd;
 bool g_bRemoveOnDie;
+bool g_bRemoveOnRoundEnd;
 
 // Leader Marker and Sprite
 int g_iClientSprite[MAXPLAYERS+1] = {-1, ...};
@@ -117,9 +119,13 @@ public void OnPluginStart()
 	HookEvent("player_team", OnPlayerTeam);
 	HookEvent("player_death", OnPlayerDeath);
 	HookEvent("round_start", OnRoundStart);
+	HookEvent("round_end", OnRoundEnd);
 
 	g_Cvar_RemoveOnDie = CreateConVar("sm_leader_remove_on_die", "1.0", "Remove Leader if leader get infected or died", _, true, 0.0, true, 1.0);
+	g_Cvar_RemoveOnRoundEnd = CreateConVar("sm_leader_remove_on_roundend", "1.0", "Remove Leader on the round end", _, true, 0.0, true, 1.0);
+
 	HookConVarChange(g_Cvar_RemoveOnDie, OnConVarChanged);
+	HookConVarChange(g_Cvar_RemoveOnRoundEnd, OnConVarChanged);
 
 	g_CMarkerPos = RegClientCookie("zleader_makerpos", "ZLeader Marker Position", CookieAccess_Protected);
 	g_CShortcut = RegClientCookie("zleader_shortcut", "ZLeader ShortCut", CookieAccess_Protected);
@@ -330,6 +336,9 @@ public void OnConVarChanged(ConVar cvar, const char[] oldValue, const char[] new
 {
 	if(cvar == g_Cvar_RemoveOnDie)
 		g_bRemoveOnDie = g_Cvar_RemoveOnDie.BoolValue;
+
+	if(cvar == g_Cvar_RemoveOnRoundEnd)
+		g_bRemoveOnRoundEnd = g_Cvar_RemoveOnRoundEnd.BoolValue;
 }
 
 public void OnMapStart()
@@ -383,6 +392,7 @@ public void OnMapStart()
 public void OnConfigsExecuted()
 {
 	g_bRemoveOnDie = g_Cvar_RemoveOnDie.BoolValue;
+	g_bRemoveOnRoundEnd = g_Cvar_RemoveOnRoundEnd.BoolValue;
 }
 
 public void OnClientPostAdminCheck(int client)
@@ -447,6 +457,18 @@ public void OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 public void OnRoundStart(Event event, const char[] name, bool dontBroadcast)
 {
 	KillAllBeacons();
+}
+
+public void OnRoundEnd(Event event, const char[] name, bool dontBroadcast)
+{
+	if(!g_bRemoveOnRoundEnd)
+		return;
+
+	for(int i = 1; i <= MaxClients; i++)
+	{
+		if(IsClientLeader(i))
+			RemoveLeader(i, R_ADMINFORCED, false);
+	}
 }
 
 public void ZR_OnClientInfected(int client, int attacker, bool motherinfect, bool override, bool respawn)
