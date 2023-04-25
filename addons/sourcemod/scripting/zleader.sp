@@ -23,7 +23,7 @@ bool g_ccc;
 char szClientTag[MAXPLAYERS+1][64];
 
 // Status
-int g_iCurrentLeader[MAXLEADER] = {-1, -1, -1, -1, -1};
+int g_iCurrentLeader[MAXLEADER] = {-1, ...};
 
 bool g_bClientLeader[MAXPLAYERS+1];
 int g_iClientLeaderSlot[MAXPLAYERS+1];
@@ -42,24 +42,34 @@ int spriteEntities[MAXPLAYERS+1];
 int g_iClientMarker[3][MAXPLAYERS+1];
 int markerEntities[3][MAXPLAYERS+1];
 
-char g_sDefendVMT[PLATFORM_MAX_PATH];
-char g_sDefendVTF[PLATFORM_MAX_PATH];
-char g_sFollowVMT[PLATFORM_MAX_PATH];
-char g_sFollowVTF[PLATFORM_MAX_PATH];
-char g_sMarkerModel[PLATFORM_MAX_PATH];
-char g_sMarkerVMT[PLATFORM_MAX_PATH];
+enum struct LeaderData
+{
+	char L_Codename[48];
+	int L_Slot;
+	
+	char L_DefendVMT[PLATFORM_MAX_PATH];
+	char L_DefendVTF[PLATFORM_MAX_PATH];
+	char L_FollowVMT[PLATFORM_MAX_PATH];
+	char L_FollowVTF[PLATFORM_MAX_PATH];
+	char L_MarkerMDL[PLATFORM_MAX_PATH];
+	char L_MarkerVMT[PLATFORM_MAX_PATH];
 
-char g_sMarkerArrowVMT[PLATFORM_MAX_PATH];
-char g_sMarkerArrowVTF[PLATFORM_MAX_PATH];
-int g_iColorArrow[4];
+	char L_MarkerArrowVMT[PLATFORM_MAX_PATH];
+	char L_MarkerArrowVTF[PLATFORM_MAX_PATH];
+	int L_iColorArrow[4];
 
-char g_sMarkerZMTP_VMT[PLATFORM_MAX_PATH];
-char g_sMarkerZMTP_VTF[PLATFORM_MAX_PATH];
-int g_iColorZMTP[4];
+	char L_MarkerZMTP_VMT[PLATFORM_MAX_PATH];
+	char L_MarkerZMTP_VTF[PLATFORM_MAX_PATH];
+	int L_iColorZMTP[4];
 
-char g_sMarkerNoHug_VMT[PLATFORM_MAX_PATH];
-char g_sMarkerNoHug_VTF[PLATFORM_MAX_PATH];
-int g_iColorNoHug[4];
+	char L_MarkerNOHUG_VMT[PLATFORM_MAX_PATH];
+	char L_MarkerNOHUG_VTF[PLATFORM_MAX_PATH];
+	int L_iColorNOHUG[4];
+}
+
+LeaderData g_LeaderData[MAXLEADER];
+
+int TotalLeader;
 
 float g_pos[3];
 
@@ -345,31 +355,7 @@ public void OnMapStart()
 {
 	LoadConfig();
 	LoadDownloadTable();
-
-	AddFileToDownloadsTable(g_sDefendVMT);
-	PrecacheGeneric(g_sDefendVMT, true);
-	AddFileToDownloadsTable(g_sDefendVTF);
-	AddFileToDownloadsTable(g_sFollowVMT);
-	PrecacheGeneric(g_sFollowVMT, true);
-	AddFileToDownloadsTable(g_sFollowVTF);
-
-	PrecacheModel(g_sMarkerModel, true);
-	AddFileToDownloadsTable(g_sMarkerModel);
-
-	PrecacheGeneric(g_sMarkerVMT, true);
-	AddFileToDownloadsTable(g_sMarkerVMT);
-
-	PrecacheGeneric(g_sMarkerArrowVMT, true);
-	AddFileToDownloadsTable(g_sMarkerArrowVMT);
-	AddFileToDownloadsTable(g_sMarkerArrowVTF);
-
-	PrecacheGeneric(g_sMarkerZMTP_VMT, true);
-	AddFileToDownloadsTable(g_sMarkerZMTP_VMT);
-	AddFileToDownloadsTable(g_sMarkerZMTP_VTF);
-
-	PrecacheGeneric(g_sMarkerNoHug_VMT, true);
-	AddFileToDownloadsTable(g_sMarkerNoHug_VMT);
-	AddFileToDownloadsTable(g_sMarkerNoHug_VTF);
+	PrecacheConfig();
 
 	Handle gameConfig = LoadGameConfigFile("funcommands.games");
 	if (gameConfig == null)
@@ -514,34 +500,42 @@ void LoadConfig()
 
 	FileToKeyValues(kv, spath);
 
-	char sSection[64];
-
 	if(KvGotoFirstSubKey(kv))
 	{
-		KvGetSectionName(kv, sSection, 64);
-		if(StrEqual(sSection, "default"))
+		TotalLeader = 0;
+
+		do
 		{
-			KvGetString(kv, "defend_vmt", g_sDefendVMT, PLATFORM_MAX_PATH);
-			KvGetString(kv, "defend_vtf", g_sDefendVTF, PLATFORM_MAX_PATH);
-			KvGetString(kv, "follow_vmt", g_sFollowVMT, PLATFORM_MAX_PATH);
-			KvGetString(kv, "follow_vtf", g_sFollowVTF, PLATFORM_MAX_PATH);
+			KvGetString(kv, "codename", g_LeaderData[TotalLeader].L_Codename, 48);
 
-			KvGetString(kv, "marker_mdl", g_sMarkerModel, PLATFORM_MAX_PATH);
-			KvGetString(kv, "marker_vmt", g_sMarkerVMT, PLATFORM_MAX_PATH);
+			g_LeaderData[TotalLeader].L_Slot = KvGetNum(kv, "leader_slot", -1);
+			
+			KvGetString(kv, "defend_vmt", g_LeaderData[TotalLeader].L_DefendVMT, PLATFORM_MAX_PATH);
+			KvGetString(kv, "defend_vtf", g_LeaderData[TotalLeader].L_DefendVTF, PLATFORM_MAX_PATH);
+			KvGetString(kv, "follow_vmt", g_LeaderData[TotalLeader].L_FollowVMT, PLATFORM_MAX_PATH);
+			KvGetString(kv, "follow_vtf", g_LeaderData[TotalLeader].L_FollowVTF, PLATFORM_MAX_PATH);
 
-			KvGetString(kv, "arrow_vmt", g_sMarkerArrowVMT, PLATFORM_MAX_PATH);
-			KvGetString(kv, "arrow_vtf", g_sMarkerArrowVTF, PLATFORM_MAX_PATH);
-			KvGetColor(kv, "arrow_color", g_iColorArrow[0], g_iColorArrow[1], g_iColorArrow[2], g_iColorArrow[3]);
+			KvGetString(kv, "marker_mdl", g_LeaderData[TotalLeader].L_MarkerMDL, PLATFORM_MAX_PATH);
+			KvGetString(kv, "marker_vmt", g_LeaderData[TotalLeader].L_MarkerVMT, PLATFORM_MAX_PATH);
 
-			KvGetString(kv, "zmtp_vmt", g_sMarkerZMTP_VMT, PLATFORM_MAX_PATH);
-			KvGetString(kv, "zmtp_vtf", g_sMarkerZMTP_VTF, PLATFORM_MAX_PATH);
-			KvGetColor(kv, "zmtp_color", g_iColorZMTP[0], g_iColorZMTP[1], g_iColorZMTP[2], g_iColorZMTP[3]);
+			KvGetString(kv, "arrow_vmt", g_LeaderData[TotalLeader].L_MarkerArrowVMT, PLATFORM_MAX_PATH);
+			KvGetString(kv, "arrow_vtf", g_LeaderData[TotalLeader].L_MarkerArrowVTF, PLATFORM_MAX_PATH);
+			KvGetColor(kv, "arrow_color", g_LeaderData[TotalLeader].L_iColorArrow[0], g_LeaderData[TotalLeader].L_iColorArrow[1], g_LeaderData[TotalLeader].L_iColorArrow[2], g_LeaderData[TotalLeader].L_iColorArrow[3]);
 
-			KvGetString(kv, "nodoorhug_vmt", g_sMarkerNoHug_VMT, PLATFORM_MAX_PATH);
-			KvGetString(kv, "nodoorhug_vtf", g_sMarkerNoHug_VTF, PLATFORM_MAX_PATH);
-			KvGetColor(kv, "nodoorhug_color", g_iColorNoHug[0], g_iColorNoHug[1], g_iColorNoHug[2], g_iColorNoHug[3]);
+			KvGetString(kv, "zmtp_vmt", g_LeaderData[TotalLeader].L_MarkerZMTP_VMT, PLATFORM_MAX_PATH);
+			KvGetString(kv, "zmtp_vtf", g_LeaderData[TotalLeader].L_MarkerZMTP_VTF, PLATFORM_MAX_PATH);
+			KvGetColor(kv, "zmtp_color", g_LeaderData[TotalLeader].L_iColorZMTP[0], g_LeaderData[TotalLeader].L_iColorZMTP[1], g_LeaderData[TotalLeader].L_iColorZMTP[2], g_LeaderData[TotalLeader].L_iColorZMTP[3]);
+
+			KvGetString(kv, "nodoorhug_vmt", g_LeaderData[TotalLeader].L_MarkerNOHUG_VMT, PLATFORM_MAX_PATH);
+			KvGetString(kv, "nodoorhug_vtf", g_LeaderData[TotalLeader].L_MarkerNOHUG_VTF, PLATFORM_MAX_PATH);
+			KvGetColor(kv, "nodoorhug_color", g_LeaderData[TotalLeader].L_iColorNOHUG[0], g_LeaderData[TotalLeader].L_iColorNOHUG[1], g_LeaderData[TotalLeader].L_iColorNOHUG[2], g_LeaderData[TotalLeader].L_iColorNOHUG[3]);
+			
+			TotalLeader++;
 		}
+		while(KvGotoNextKey(kv));
 	}
+
+	delete kv;
 }
 
 void LoadDownloadTable()
@@ -575,6 +569,33 @@ void LoadDownloadTable()
 	delete file;
 }
 
+void PrecacheConfig()
+{
+	for(int i = 0; i < TotalLeader; i++)
+	{
+		if(g_LeaderData[i].L_DefendVMT[0] != '\0')
+			PrecacheGeneric(g_LeaderData[i].L_DefendVMT, true);
+
+		if(g_LeaderData[i].L_FollowVMT[0] != '\0')
+			PrecacheGeneric(g_LeaderData[i].L_FollowVMT, true);
+
+		if(g_LeaderData[i].L_MarkerMDL[0] != '\0')
+			PrecacheModel(g_LeaderData[i].L_MarkerMDL, true);
+
+		if(g_LeaderData[i].L_MarkerVMT[0] != '\0')
+			PrecacheGeneric(g_LeaderData[i].L_MarkerVMT, true);
+
+		if(g_LeaderData[i].L_MarkerArrowVMT[0] != '\0')
+			PrecacheGeneric(g_LeaderData[i].L_MarkerArrowVMT, true);
+
+		if(g_LeaderData[i].L_MarkerZMTP_VMT[0] != '\0')
+			PrecacheGeneric(g_LeaderData[i].L_MarkerZMTP_VMT, true);
+
+		if(g_LeaderData[i].L_MarkerNOHUG_VMT[0] != '\0')
+			PrecacheGeneric(g_LeaderData[i].L_MarkerNOHUG_VMT, true);
+	}
+}
+
 /* =========================================================================
 ||
 ||  Leader Command
@@ -605,7 +626,7 @@ public Action Command_Leader(int client, int args)
 					return Plugin_Stop;
 				}
 
-				for(int i = 0; i < MAXLEADER; i++)
+				for(int i = 0; i < TotalLeader; i++)
 				{
 					if(IsLeaderSlotFree(i))
 					{
@@ -639,7 +660,7 @@ public Action Command_Leader(int client, int args)
 			return Plugin_Handled;
 		}
 
-		for(int i = 0; i < MAXLEADER; i++)
+		for(int i = 0; i < TotalLeader; i++)
 		{
 			if(IsLeaderSlotFree(i))
 			{
@@ -685,6 +706,8 @@ public void LeaderMenu(int client)
 
 public int LeaderMenuHandler(Menu menu, MenuAction action, int param1, int param2)
 {
+	int slot = GetLeaderIndexWithLeaderSlot(g_iClientLeaderSlot[param1]);
+
 	switch (action)
 	{
 		case MenuAction_DisplayItem:
@@ -736,7 +759,9 @@ public int LeaderMenuHandler(Menu menu, MenuAction action, int param1, int param
 					{
 						RemoveSprite(param1);
 						g_iClientSprite[param1] = SP_DEFEND;
-						spriteEntities[param1] = AttachSprite(param1, g_sDefendVMT);
+
+						if(g_LeaderData[slot].L_DefendVMT[0] != '\0')
+							spriteEntities[param1] = AttachSprite(param1, g_LeaderData[slot].L_DefendVMT);
 					}
 					else
 					{
@@ -753,7 +778,9 @@ public int LeaderMenuHandler(Menu menu, MenuAction action, int param1, int param
 					{
 						RemoveSprite(param1);
 						g_iClientSprite[param1] = SP_FOLLOW;
-						spriteEntities[param1] = AttachSprite(param1, g_sFollowVMT);
+
+						if(g_LeaderData[slot].L_FollowVMT[0] != '\0')
+							spriteEntities[param1] = AttachSprite(param1, g_LeaderData[slot].L_FollowVMT);
 					}
 					else
 					{
@@ -810,7 +837,7 @@ public Action Command_CurrentLeader(int client, int args)
 
 	menu.SetTitle("%T %T", "Menu Prefix", client, "Menu Leader list title", client);
 	
-	for(int i = 0; i < MAXLEADER; i++)
+	for(int i = 0; i < TotalLeader; i++)
 	{
 		char codename[32];
 		char sLine[128];
@@ -855,7 +882,7 @@ public int CurrentLeaderMenuHandler(Menu menu, MenuAction action, int param1, in
 public Action Command_VoteLeader(int client, int args)
 {
 	int count = 0;
-	for(int i = 0; i < MAXLEADER; i++)
+	for(int i = 0; i < TotalLeader; i++)
 	{
 		if(!IsLeaderSlotFree(i))
 			count++;
@@ -982,7 +1009,7 @@ public void RemoveLeaderList(int client)
 	Format(title, sizeof(title), "%t %t \n%t", "Menu Prefix", "Menu Leader list title", "Menu Remove Leader title");
 	menu.SetTitle("%s", title);
 	
-	for(int i = 0; i < MAXLEADER; i++)
+	for(int i = 0; i < TotalLeader; i++)
 	{
 		char codename[32];
 		char sLine[128];
@@ -1012,7 +1039,7 @@ public int RemoveLeaderListMenuHandler(Menu menu, MenuAction action, int param1,
 	{
 		case MenuAction_Select:
 		{
-			for(int i = 0; i < MAXLEADER; i++)
+			for(int i = 0; i < TotalLeader; i++)
 			{
 				if(param2 == i && !IsLeaderSlotFree(i))
 					RemoveLeader(g_iCurrentLeader[i], R_ADMINFORCED, true);
@@ -1317,16 +1344,18 @@ public void RemoveMarker(int client, int type)
 
 public void SpawnMarker(int client, int type)
 {
+	int slot = GetLeaderIndexWithLeaderSlot(g_iClientLeaderSlot[client]);
+
 	if (type == MK_NORMAL)
-		markerEntities[type][client] = SpawnSpecialMarker(client, g_sMarkerArrowVMT);
+		markerEntities[type][client] = SpawnSpecialMarker(client, g_LeaderData[slot].L_MarkerArrowVMT);
 
 	else if(type == MK_ZMTP)
-		markerEntities[type][client] = SpawnSpecialMarker(client, g_sMarkerZMTP_VMT);
+		markerEntities[type][client] = SpawnSpecialMarker(client, g_LeaderData[slot].L_MarkerZMTP_VMT);
 
 	else
-		markerEntities[type][client] = SpawnSpecialMarker(client, g_sMarkerNoHug_VMT);
+		markerEntities[type][client] = SpawnSpecialMarker(client, g_LeaderData[slot].L_MarkerNOHUG_VMT);
 
-	g_iClientMarker[type][client] = SpawnAimMarker(client, g_sMarkerModel, type);
+	g_iClientMarker[type][client] = SpawnAimMarker(client, g_LeaderData[slot].L_MarkerMDL, type);
 }
 
 public int SpawnAimMarker(int client, char[] model, int type)
@@ -1354,14 +1383,16 @@ public int SpawnAimMarker(int client, char[] model, int type)
 	DispatchKeyValue(Ent, "rendercolor", "255 255 255");
 	DispatchSpawn(Ent);
 
+	int slot = GetLeaderIndexWithLeaderSlot(g_iClientLeaderSlot[client]);
+
 	if(type == MK_NORMAL)
-		SetEntityRenderColor(Ent, g_iColorArrow[0], g_iColorArrow[1], g_iColorArrow[2], g_iColorArrow[3]);
+		SetEntityRenderColor(Ent, g_LeaderData[slot].L_iColorArrow[0], g_LeaderData[slot].L_iColorArrow[1], g_LeaderData[slot].L_iColorArrow[2], g_LeaderData[slot].L_iColorArrow[3]);
 
 	else if(type  == MK_NOHUG)
-		SetEntityRenderColor(Ent, g_iColorNoHug[0], g_iColorNoHug[1], g_iColorNoHug[2], g_iColorNoHug[3]);
+		SetEntityRenderColor(Ent, g_LeaderData[slot].L_iColorNOHUG[0], g_LeaderData[slot].L_iColorNOHUG[1], g_LeaderData[slot].L_iColorNOHUG[2], g_LeaderData[slot].L_iColorNOHUG[3]);
 
 	else
-		SetEntityRenderColor(Ent, g_iColorZMTP[0], g_iColorZMTP[1], g_iColorZMTP[2], g_iColorZMTP[3]);
+		SetEntityRenderColor(Ent, g_LeaderData[slot].L_iColorZMTP[0], g_LeaderData[slot].L_iColorZMTP[1], g_LeaderData[slot].L_iColorZMTP[2], g_LeaderData[slot].L_iColorZMTP[3]);
 
 
 	TeleportEntity(Ent, g_pos, NULL_VECTOR, NULL_VECTOR);
@@ -1767,27 +1798,34 @@ public int Native_IsLeaderSlotFree(Handle hPlugins, int numParams)
 	return IsLeaderSlotFree(slot);
 }
 
-stock void GetLeaderCodename(int slot, char[] buffer, int maxlen)
+stock int GetLeaderIndexWithLeaderSlot(int slot)
 {
-	if(slot == ALPHA)
-		Format(buffer, maxlen, "Alpha");
+	for(int i = 0; i < TotalLeader; i++)
+	{
+		if(g_LeaderData[i].L_Slot == slot)
+			return i;
+	}
 
-	else if(slot == BRAVO)
-		Format(buffer, maxlen, "Bravo");
+	return -1;
+}
 
-	else if(slot == CHARLIE)
-		Format(buffer, maxlen, "Charlie");
-	
-	else if(slot == DELTA)
-		Format(buffer, maxlen, "Delta");
+stock int GetLeaderCodename(int slot, char[] buffer, int maxlen)
+{
+	for(int i = 0; i < TotalLeader; i++)
+	{
+		if(g_LeaderData[i].L_Slot == slot)
+		{
+			Format(buffer, maxlen, "%s", g_LeaderData[i].L_Codename);
+			return 1;
+		}
+	}
 
-	else
-		Format(buffer, maxlen, "Echo");
+	return -1;
 }
 
 stock int GetLeaderFreeSlot()
 {
-	for(int i = 0; i < MAXLEADER; i++)
+	for(int i = 0; i < TotalLeader; i++)
 	{
 		if(IsLeaderSlotFree(i))
 			return i;

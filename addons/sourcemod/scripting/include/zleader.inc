@@ -3,13 +3,7 @@
 #endif
 #define _zleader_included
 
-#define ALPHA 0
-#define BRAVO 1
-#define CHARLIE 2
-#define DELTA 3
-#define ECHO 4
-
-#define MAXLEADER 5
+#define MAXLEADER 10
 
 enum ResignReason
 {
