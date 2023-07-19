@@ -1,0 +1,5 @@
+"UnlitGeneric"
+{
+	"$basetexture" "nide/leader/trail"
+	"$translucent" 1
+}

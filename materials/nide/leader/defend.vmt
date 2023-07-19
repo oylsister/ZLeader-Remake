@@ -1,0 +1,5 @@
+"UnlitGeneric"
+{
+	"$basetexture" "nide/leader/defend"
+	"$translucent" 1
+}
