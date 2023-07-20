@@ -1,4 +1,4 @@
-project:
+eproject:
   sourceknight: 0.2
   name: ZLeader
   dependencies:
@@ -22,6 +22,20 @@ project:
       repo: https://github.com/srcdslab/sm-plugin-zombiereloaded
       unpack:
       - source: /src/addons/sourcemod/scripting/include
+        dest: /addons/sourcemod/scripting/include
+
+    - name: vip_core
+      type: git
+      repo: https://github.com/srcdslab/sm-plugin-VIP-Core
+      unpack:
+      - source: /addons/sourcemod/scripting/include
+        dest: /addons/sourcemod/scripting/include
+
+    - name: CustomChatColors
+      type: git
+      repo: https://github.com/srcdslab/sm-plugin-CustomChatColors
+      unpack:
+      - source: /addons/sourcemod/scripting/include
         dest: /addons/sourcemod/scripting/include
 
     - name: utilshelper
