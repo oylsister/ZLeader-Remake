@@ -3,256 +3,327 @@
 	// Non-Menu Message
 	"Prefix"
 	{
-		"en"    "{green}[ZLeader]{default}"
+		"en"    	"{green}[ZLeader]{default}"
+        "ru"    	"{green}[ZLeader]{default}"
 	}
 
 	"Slot is full"
 	{
-		"en"    "All Leader slot is full!"
+		"en"    	"All Leader slot are full!"
+        "ru"    	"Все Лидер слоты заполнены!"
 	}
 
 	"You set client leader"
 	{
-		"#format" "{1:N}" 
-		"en"    "You have set leader on {lime}{1}{default}."
+		"#format"	"{1:N}" 
+		"en"		"You have set leader on {lime}{1}{default}."
+        "ru"		"Вы дали меню лидера игроку {lime}{1}{default}."
+	}
+    
+    "Leader usage"
+	{
+		"en"		"Usage: sm_leader <player>"
+        "ru"		"Используйте: sm_leader <player>"
 	}
 
 	"Vote leader usage"
 	{
-		"en"    "Usage: sm_voteleader <player>"
+		"en"		"Usage: sm_voteleader <player>"
+        "ru"		"Используйте: sm_voteleader <player>"
+	}
+    
+    "Remove leader usage"
+	{
+		"en"		"Usage: sm_removeleader <player>"
+        "ru"		"Используйте: sm_removeleader <player>"
 	}
 
 	"Already vote client"
 	{
-		"en"    "You've already voted for this person!"
+		"en"		"You have already voted for this player!"
+        "ru"		"Вы уже проголосовали за этого игрока!
 	}
 
 	"Already Leader"
 	{
 		"#format"	"{1:N}"
-		"en"	"{lightred}{1}{default} is already leader!"
+		"en"		"{lightblue}{1}{default} is already leader!"
+        "ru"		"{lightblue}{1}{default} уже является лидером!"
 	}
 
 	"Has to be human"
 	{
-		"en"    "You have to vote for a human!"
+		"en"		"You have to vote for a human!"
+        "ru"		"Можно голосовать только за живых людей!"
 	}
 
 	"It's Zombie"
 	{
-		"en"	"Target is zombie!"
+		"en"		"Leader has to be alive human!"
+        "ru"		"Лидер должен быть за живых людей!"
 	}
+    
+    "Leader cache refreshed"
+    {
+    	"en"		"Leaders cache has been refreshed."
+        "ru"		"Кэш лидеров успешно перезагружен."
+    }
 
 	"Vote for client"
 	{
-		"#format" "{1:N},{2:N},{3:i},{4:i}" 
-		"en"    "{1} has voted for {2} to be the leader. ({3}/{4} votes)"
+		"#format"	"{1:N},{2:N},{3:i},{4:i}" 
+		"en"    	"{1} has voted for {2} to be the leader. ({3} votes, {4} requiered)"
+        "ru"    	"{1} проголосовал за {2} чтобы он стал лидером. ({3} голос(а)(ов), {4} небходимо)"
+	}
+	
+	"VoteLeader Cooldown"
+	{
+		"#format"	"{1:i}"
+		"en"		"You are currently on cooldown. You can vote again in {1}s."
+        "ru"		"Команда в перезарядке. Вы можете голосовать опять черз {1}с."
 	}
 
 	"Invalid client"
 	{
-		"en"	"Invalid client."
+		"en"		"Invalid client."
+        "ru"		"Неверный клиент."
 	}
 
 	"Client is not leader"
 	{
-		"#format" "{1:N}"
-		"en"	"{1} is not the leader!"
+		"#format" 	"{1:N}"
+		"en"		"{1} is not the leader!"
+        "ru"		"{1} не является лидером!"
 	}
+    
+    "Current Leaders"
+    {
+        "en"		"Current Leaders:"
+        "ru"		"Лидеры в данный момент:"
+    }
+    
+    "Possible Leaders"
+    {
+    	"#format"	"{1:s}"
+        "en"		"Possible Leaders online: {olive}{1}"
+        "ru"		"Возможные лидеры онлайн: {olive}{1}"
+    }
+    
+    "Possible Leaders None"
+    {
+        "en"		"Possible Leaders online: {olive}None."
+        "ru"		"Возможные лидеры онлайн: {olive}Никто."
+    }
 
 	"Become New Leader"
 	{
-		"#format" "{1:N},{2:s}"
-		"en"	"{lightblue}{1}{default} has become new {orange}Leader {2}{default}!"
+		"#format"	"{1:N},{2:s}"
+		"en"		"{lightblue}{1}{default} has become Leader {darkred}[{orange}{2}{darkred}]"
+        "ru"		"{lightblue}{1}{default} стал лидером {darkred}[{orange}{2}{darkred}]"
 	}
 
 	// Remove Reason
 	"Remove Disconnected"
 	{
-		"#format" "{1:s},{2:N}"
-		"en"	"Leader {orange}{1}{default} {lightred}{2}{default} has disconnected from the server!"
+		"#format"	"{1:s},{2:N}"
+		"en"		"{orange}Leader {darkred}[{orange}{1}{darkred}] {olive}{2}{default} has disconnected from the server!"
+        "ru"		"{orange}Лидер {darkred}[{orange}{1}{darkred}] {olive}{2}{default} вышел с сервера!"
 	}
 
 	"Remove Admin Force"
 	{
-		"#format" "{1:s},{2:N}"
-		"en"	"Leader {orange}{1}{default} {lightred}{2}{default} has been resigned by admin!"
+		"#format"	"{1:s},{2:N}"
+		"en"		"{orange}Leader {darkred}[{orange}{1}{darkred}] {olive}{2}{default} has been resigned by admin!"
+        "ru"		"{orange}Лидер {darkred}[{orange}{1}{darkred}] {olive}{2}{default} был снят администратором"
 	}
 
 	"Remove Self Resign"
 	{
-		"#format" "{1:s},{2:N}"
-		"en"	"Leader {orange}{1}{default} {lightred}{2}{default} has resigned by him/herself!"
+		"#format"	"{1:s},{2:N}"
+		"en"		"{orange}Leader {darkred}[{orange}{1}{darkred}] {olive}{2}{default} has resigned by him/herself!"
+        "ru"		"{orange}Лидер {darkred}[{orange}{1}{darkred}] {olive}{2}{default} подал в отставку!"
 	}
 
 	"Remove Spectator"
 	{
-		"#format" "{1:s},{2:N}"
-		"en"	"Leader {orange}{1}{default} {lightred}{2}{default} has been resigned for moving to spectator!"
+		"#format"	"{1:s},{2:N}"
+		"en"		"{orange}Leader {darkred}[{orange}{1}{darkred}] {olive}{2}{default} has been resigned for moving to spectator!"
+        "ru"		"{orange}Лидер {darkred}[{orange}{1}{darkred}] {olive}{2}{default} был снят потому что ушел в наблюдатели!"
 	}
 
 	"Remove Died"
 	{
-		"#format" "{1:s},{2:N}"
-		"en"	"Leader {orange}{1}{default} {lightred}{2}{default} is died and get resigned!"
+		"#format"	"{1:s},{2:N}"
+		"en"		"{orange}Leader {darkred}[{orange}{1}{darkred}] {olive}{2}{default} has died and got resigned!"
+        "ru"		"{orange}Лидер {darkred}[{orange}{1}{darkred}] {olive}{2}{default} умер и был снят!"
 	}
 
 	"Remove Infected"
 	{
-		"#format" "{1:s},{2:N}"
-		"en"	"Leader {orange}{1}{default} {lightred}{2}{default} get infected and get resigned!"
+		"#format"	"{1:s},{2:N}"
+		"en"		"{orange}Leader {darkred}[{orange}{1}{darkred}] {olive}{2}{default} get infected and got resigned!"
+        "ru"		"{orange}Лидер {darkred}[{orange}{1}{darkred}] {olive}{2}{default} заразился и был снят!"
 	}
 
 
 	// Menu Message
 	"Menu Prefix"
 	{
-		"en"	"[ZLeader]"
+		"en"		"[ZLeader]"
 	}
 
 	"Menu Leader title"
 	{
-		"en"	"Leader Menu"
+		"en"		"Leader Menu"
 	}
 
 	"Menu Leader list title"
 	{
-		"en"	"Leader list menu"
+		"en"		"Leader list menu"
 	}
 
 	"Menu Remove Leader title"
 	{
-		"en"	"Select leader to remove them"
+		"en"		"Select leader to remove them"
 	}
 
 	"None"
 	{
-		"en"	"None"
+		"en"		"None"
 	}
 
 	"Defend Here"
 	{
-		"en"	"Defend Here"
+		"en"		"Defend Here"
 	}
 
 	"Follow Me"
 	{
-		"en"	"Follow Me"
+		"en"		"Follow Me"
 	}
 
 	"Toggle Beacon"
 	{
-		"en"	"Toggle Beacon"
+		"en"		"Toggle Beacon"
+	}
+	
+	"Toggle Trail"
+	{
+		"en"		"Toggle Trail"
 	}
 
 	"Place Marker"
 	{
-		"en"	"Place Marker"
+		"en"		"Place Marker"
 	}
 
 	"Remove Marker"
 	{
-		"en"	"Remove Marker"
+		"en"		"Remove Markers"
 	}
 
 	"Resign from Leader"
 	{
-		"en"	"Resign from Leader"
+		"en"		"Resign from Leader"
 	}
 
 	// Marker Menu
 	"Marker menu title"
 	{
-		"en"	"Marker Menu Option"
+		"en"		"Marker Menu"
 	}
 
-	"Marker Only"
+	"Arrow Marker"
 	{
-		"en"	"Marker Only"
+		"en"		"Arrow Marker"
+	}
+    
+    "Defend Here"
+	{
+		"en"		"Defend Here"
 	}
 
 	"ZM Teleport"
 	{
-		"en"	"ZM Teleport"
+		"en"		"ZM Teleport"
 	}
 
 	"No Doorhug"
 	{
-		"en"	"No Doorhug"
+		"en"		"No Doorhug"
 	}
 
 	// Preference
 	"Client Setting"
 	{
-		"en"	"Client Setting"
+		"en"		"Client Settings"
+        "ru"		"Настройки клиента"
 	}
 
 	"Shortcut"
 	{
-		"en"	"Shortcut F Key"
+		"en"		"Shortcut Keys"
+        "ru"		"Шорткат"
 	}
 
 	"Marker Pos"
 	{
-		"en"	"Marker Postion"
+		"en"		"Marker Postion"
+        "ru"		"Позиция маркера"
 	}
 
 	"Enabled"
 	{
-		"en"	"Enabled"
+		"en"		"Enabled"
+        "ru"		"Включено"
 	}
 
 	"Disabled"
 	{
-		"en"	"Disabled"
+		"en"		"Disabled"
+        "ru"		"Выключено"
 	}
 
 	"Enabled Chat"
 	{
-		"en"	"{lime}Enabled"
+		"en"		"{lime}Enabled"
+        "ru"		"{lime}Включено"
 	}
 
 	"Disabled Chat"
 	{
-		"en"	"{lightred}Disabled"
+		"en"		"{red}Disabled"
+        "ru"		"{red}Выключено"
 	}
 
 	"Client Position"
 	{
-		"en"	"Client's Position"
+		"en"		"Client's Position"
+        "ru"		"Позиция клиента"
 	}
 
 	"Client Crosshair"
 	{
-		"en"	"Client's Crosshair"
+		"en"		"Client's Crosshair"
+        "ru"		"Позиция прицела"
 	}
 
 	"You set shortcut"
 	{
 		"#format"	"{1:s}"
-		"en"	"You have {1} {default}leader shortcut key."
+		"en"		"You have {1} {default}leader shortcut key."
+        "ru"		"У вас стоит кнопка {1} {default}как шорткат для лидер-меню."
 	}
 
 	"Marker Pos Crosshair"
 	{
-		"en"	"You have set Marker to be set at {darkblue}Your crosshair{default} position."
+		"en"		"You have set Marker to be set at {green}Your crosshair{default} position."
+        "ru"		"Теперь маркеры ставятся по положению {green}прицелу{default}."
 	}
 
 	"Marker Pos Player Postion"
 	{
-		"en"	"You have set Marker to be set at {darkblue}Player's{default} position."
-	}
-
-	// Leader Die
-	"Has Died"
-	{
-		"#format"	"{1:s},{2:N}"
-		"en"	"Leader {orange}{1}{default} {red}{2}{default} is died!"
-	}
-
-	"Get Infected"
-	{
-		"#format"	"{1:s},{2:N}"
-		"en"	"Leader {orange}{1}{default} {red}{2}{default} get infected!"
+		"en"		"You have set Marker to be set at {green}Player's{default} position."
+        "ru"		"Теперь маркеры ставятся по положению {green}игрока{default}."
 	}
 }
