@@ -397,7 +397,7 @@ public void OnLibraryRemoved(const char[] name) {
 		vipcore = false;
 
 	if (StrEqual(name, "ccc"))
-		g_ccc = true;
+		g_ccc = false;
 }
 public void OnLibraryAdded(const char[] name) {
 	if (StrEqual(name, "vip_core"))
