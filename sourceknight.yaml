@@ -1,4 +1,4 @@
-eproject:
+project:
   sourceknight: 0.2
   name: ZLeader
   dependencies:
