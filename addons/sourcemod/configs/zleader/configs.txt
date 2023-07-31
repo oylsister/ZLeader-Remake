@@ -6,10 +6,10 @@
 		"leader_slot"	"0"
 
 		"codename_vmt"	"materials/nide/leader/codename/alpha.vmt"
-        "codename_vtf"	"materials/nide/leader/codename/alpha.vtf"
+        	"codename_vtf"	"materials/nide/leader/codename/alpha.vtf"
 
 		"trail_vmt"		"materials/nide/leader/trail.vmt"
-        "trail_vtf"		"materials/nide/leader/trail.vtf"
+        	"trail_vtf"		"materials/nide/leader/trail.vtf"
 
 		"follow_vmt"	"materials/nide/leader/follow.vmt"
 		"follow_vtf"	"materials/nide/leader/follow.vtf"
@@ -21,7 +21,7 @@
 		"arrow_vtf"		"materials/oylsister/eds_arrow.vtf"
 		"arrow_color"	"72 255 72 255"
         
-        "defend_vmt"	"materials/nide/leader/defend.vmt"
+        	"defend_vmt"	"materials/nide/leader/defend.vmt"
 		"defend_vtf"	"materials/nide/leader/defend.vtf"
 		"defend_color"	"211 211 211 255"
 
@@ -40,10 +40,10 @@
 		"leader_slot"	"1"
 
 		"codename_vmt"	"materials/nide/leader/codename/bravo.vmt"
-        "codename_vtf"	"materials/nide/leader/codename/bravo.vtf"
+        	"codename_vtf"	"materials/nide/leader/codename/bravo.vtf"
 
 		"trail_vmt"		"materials/nide/leader/trail.vmt"
-        "trail_vtf"		"materials/nide/leader/trail.vtf"
+        	"trail_vtf"		"materials/nide/leader/trail.vtf"
 
 		"follow_vmt"	"materials/nide/leader/follow.vmt"
 		"follow_vtf"	"materials/nide/leader/follow.vtf"
@@ -55,7 +55,7 @@
 		"arrow_vtf"		"materials/oylsister/eds_arrow.vtf"
 		"arrow_color"	"72 255 72 255"
         
-        "defend_vmt"	"materials/nide/leader/defend.vmt"
+        	"defend_vmt"	"materials/nide/leader/defend.vmt"
 		"defend_vtf"	"materials/nide/leader/defend.vtf"
 		"defend_color"	"211 211 211 255"
 
@@ -74,10 +74,10 @@
 		"leader_slot"	"2"
 
 		"codename_vmt"	"materials/nide/leader/codename/charlie.vmt"
-        "codename_vtf"	"materials/nide/leader/codename/charlie.vtf"
+        	"codename_vtf"	"materials/nide/leader/codename/charlie.vtf"
 
 		"trail_vmt"		"materials/nide/leader/trail.vmt"
-        "trail_vtf"		"materials/nide/leader/trail.vtf"
+        	"trail_vtf"		"materials/nide/leader/trail.vtf"
 
 		"follow_vmt"	"materials/nide/leader/follow.vmt"
 		"follow_vtf"	"materials/nide/leader/follow.vtf"
@@ -89,7 +89,7 @@
 		"arrow_vtf"		"materials/oylsister/eds_arrow.vtf"
 		"arrow_color"	"72 255 72 255"
         
-        "defend_vmt"	"materials/nide/leader/defend.vmt"
+        	"defend_vmt"	"materials/nide/leader/defend.vmt"
 		"defend_vtf"	"materials/nide/leader/defend.vtf"
 		"defend_color"	"211 211 211 255"
 
@@ -108,10 +108,10 @@
 		"leader_slot"	"3"
 
 		"codename_vmt"	"materials/nide/leader/codename/delta.vmt"
-        "codename_vtf"	"materials/nide/leader/codename/delta.vtf"
+        	"codename_vtf"	"materials/nide/leader/codename/delta.vtf"
 
 		"trail_vmt"		"materials/nide/leader/trail.vmt"
-        "trail_vtf"		"materials/nide/leader/trail.vtf"
+        	"trail_vtf"		"materials/nide/leader/trail.vtf"
 
 		"follow_vmt"	"materials/nide/leader/follow.vmt"
 		"follow_vtf"	"materials/nide/leader/follow.vtf"
@@ -123,7 +123,7 @@
 		"arrow_vtf"		"materials/oylsister/eds_arrow.vtf"
 		"arrow_color"	"72 255 72 255"
         
-        "defend_vmt"	"materials/nide/leader/defend.vmt"
+        	"defend_vmt"	"materials/nide/leader/defend.vmt"
 		"defend_vtf"	"materials/nide/leader/defend.vtf"
 		"defend_color"	"211 211 211 255"
 
@@ -142,10 +142,10 @@
 		"leader_slot"	"4"
 
 		"codename_vmt"	"materials/nide/leader/codename/echo.vmt"
-        "codename_vtf"	"materials/nide/leader/codename/echo.vtf"
+        	"codename_vtf"	"materials/nide/leader/codename/echo.vtf"
 
 		"trail_vmt"		"materials/nide/leader/trail.vmt"
-        "trail_vtf"		"materials/nide/leader/trail.vtf"
+        	"trail_vtf"		"materials/nide/leader/trail.vtf"
 
 		"follow_vmt"	"materials/nide/leader/follow.vmt"
 		"follow_vtf"	"materials/nide/leader/follow.vtf"
@@ -157,7 +157,7 @@
 		"arrow_vtf"		"materials/oylsister/eds_arrow.vtf"
 		"arrow_color"	"72 255 72 255"
         
-        "defend_vmt"	"materials/nide/leader/defend.vmt"
+        	"defend_vmt"	"materials/nide/leader/defend.vmt"
 		"defend_vtf"	"materials/nide/leader/defend.vtf"
 		"defend_color"	"211 211 211 255"
 
