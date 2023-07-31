@@ -6,12 +6,6 @@
 forward void Leader_SetClientLeader(int client, char[] sReason);
 forward void Leader_RemoveClientLeader(int client);
 
-#define ALPHA 0
-#define BRAVO 1
-#define CHARLIE 2
-#define DELTA 3
-#define ECHO 4
-
 #define MAXLEADER 5
 
 enum ResignReason

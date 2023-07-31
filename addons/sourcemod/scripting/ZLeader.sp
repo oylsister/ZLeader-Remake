@@ -29,26 +29,12 @@
 #define MK_ZMTP 2
 #define MK_NOHUG 3
 
-ConVar
-	g_cvDefendVMT, g_cvDefendVTF,
-	g_cvFollowVMT, g_cvFollowVTF,
-	g_cvTrailVMT, g_cvTrailVTF, g_cvTrailPosition,
-	g_cvMarkerMDL, g_cvMarkerVMT, g_cvMarkerVTF, g_cvMarkerVTX80, g_cvMarkerVTX90, g_cvMarkerVVD,
-	g_cvZMTP_VMT, g_cvZMTP_VTF, g_cvZMTP_Color, 
-	g_cvArrowVMT, g_cvArrowVTF, g_cvArrow_Color,
-	g_cvNoHugVMT, g_cvNoHugVTF, g_cvNoHug_Color,
-	g_cvAlphaVMT, g_cvAlphaVTF,
-	g_cvBravoVMT, g_cvBravoVTF,
-	g_cvCharlieVMT, g_cvCharlieVTF,
-	g_cvDeltaVMT, g_cvDeltaVTF,
-	g_cvEchoVMT, g_cvEchoVTF,
-	g_cvDefend_Color;
+ConVar 
+	g_cvGlowLeader,
+	g_cvNeonLeader,
+	g_cvTrailPosition;
 
 int
-	g_iColorZMTP[4],
-	g_iColorArrow[4],
-	g_iColorNoHug[4],
-	g_iColorDefend[4],
 	g_Serial_Gen = 0,
 	g_BeamSprite = -1,
 	g_HaloSprite = -1,
@@ -62,7 +48,6 @@ int
 	g_iClientVoteWhom[MAXPLAYERS + 1],
 	g_iClientMarker[4][MAXPLAYERS + 1],
 	g_iClientLeaderSlot[MAXPLAYERS + 1],
-	greyColor[4] = {128, 128, 128, 255},
 	g_TrailModel[MAXPLAYERS + 1] = { 0, ... },
 	g_BeaconSerial[MAXPLAYERS + 1] = {0, ... },
 	g_iClientSprite[MAXPLAYERS + 1] = {-1, ...},
@@ -80,20 +65,6 @@ bool
 	g_bBeaconActive[MAXPLAYERS + 1] = { false, ... };
 
 char 
-	TrailVTF[PLATFORM_MAX_PATH], TrailVMT[PLATFORM_MAX_PATH],
-	DefendVMT[PLATFORM_MAX_PATH], DefendVTF[PLATFORM_MAX_PATH],
-	FollowVMT[PLATFORM_MAX_PATH], FollowVTF[PLATFORM_MAX_PATH],
-	MarkerMDL[PLATFORM_MAX_PATH], MarkerVMT[PLATFORM_MAX_PATH], MarkerVTF[PLATFORM_MAX_PATH],
-	MarkerVTX80[PLATFORM_MAX_PATH], MarkerVTX90[PLATFORM_MAX_PATH], MarkerVVD[PLATFORM_MAX_PATH],
-	ArrowVMT[PLATFORM_MAX_PATH], ArrowVTF[PLATFORM_MAX_PATH],
-	ZMTP_VMT[PLATFORM_MAX_PATH], ZMTP_VTF[PLATFORM_MAX_PATH],
-	NoHugVMT[PLATFORM_MAX_PATH], NoHugVTF[PLATFORM_MAX_PATH],
-	AlphaVMT[PLATFORM_MAX_PATH], AlphaVTF[PLATFORM_MAX_PATH],
-	BravoVMT[PLATFORM_MAX_PATH], BravoVTF[PLATFORM_MAX_PATH],
-	CharlieVMT[PLATFORM_MAX_PATH], CharlieVTF[PLATFORM_MAX_PATH],
-	DeltaVMT[PLATFORM_MAX_PATH], DeltaVTF[PLATFORM_MAX_PATH],
-	EchoVMT[PLATFORM_MAX_PATH], EchoVTF[PLATFORM_MAX_PATH],
-	g_sDataFile[PLATFORM_MAX_PATH],
 	szColorName[MAXPLAYERS + 1][64],
 	szColorChat[MAXPLAYERS + 1][64],
 	g_sLeaderAuth[MAXPOSSIBLELEADERS][64],
@@ -107,12 +78,47 @@ Handle
 	g_hSetClientLeaderForward,
 	g_hRemoveClientLeaderForward;
 
+enum struct LeaderData
+{
+	char L_Codename[48];
+	int L_Slot;
+
+	char L_TrailVMT[PLATFORM_MAX_PATH];
+	char L_TrailVTF[PLATFORM_MAX_PATH];
+	char L_CodeNameVMT[PLATFORM_MAX_PATH];
+	char L_CodeNameVTF[PLATFORM_MAX_PATH];
+	char L_FollowVMT[PLATFORM_MAX_PATH];
+	char L_FollowVTF[PLATFORM_MAX_PATH];
+	char L_MarkerMDL[PLATFORM_MAX_PATH];
+	char L_MarkerVMT[PLATFORM_MAX_PATH];
+
+	char L_MarkerArrowVMT[PLATFORM_MAX_PATH];
+	char L_MarkerArrowVTF[PLATFORM_MAX_PATH];
+	int L_iColorArrow[4];
+
+	char L_MarkerZMTP_VMT[PLATFORM_MAX_PATH];
+	char L_MarkerZMTP_VTF[PLATFORM_MAX_PATH];
+	int L_iColorZMTP[4];
+
+	char L_MarkerNOHUG_VMT[PLATFORM_MAX_PATH];
+	char L_MarkerNOHUG_VTF[PLATFORM_MAX_PATH];
+	int L_iColorNOHUG[4];
+
+	char L_MarkerDefend_VMT[PLATFORM_MAX_PATH];
+	char L_MarkerDefend_VTF[PLATFORM_MAX_PATH];
+	int L_iColorDefend[4];
+}
+
+LeaderData g_LeaderData[MAXLEADER];
+
+int TotalLeader;
+
 public Plugin myinfo = 
 {
 	name = "ZLeader Remake",
 	author = "Original by AntiTeal, nuclear silo, CNTT, colia || Remake by Oylsister, .Rushaway",
 	description = "Allows for a human to be a leader, and give them special functions with it.",
-	version = "3.1.4",
+	version = "3.2",
 	url = ""
 };
 
@@ -149,91 +155,9 @@ public void OnPluginStart() {
 	RegAdminCmd("sm_reloadleaders", Command_ReloadLeaders, ADMFLAG_BAN, "Reload access for leader.ini");
 
 	/* CONVARS */
-	g_cvFollowVTF = CreateConVar("sm_zleader_follow_vtf", "materials/nide/leader/follow.vtf", "The follow me .vtf file");
-	g_cvFollowVTF.AddChangeHook(ConVarChange);
-	g_cvFollowVMT = CreateConVar("sm_zleader_follow_vmt", "materials/nide/leader/follow.vmt", "The follow me .vmt file");
-	g_cvFollowVMT.AddChangeHook(ConVarChange);
-
-	// Trail
-	g_cvTrailVTF = CreateConVar("sm_zleader_trail_vtf", "materials/nide/leader/trail.vtf", "The trail .vtf file");
-	g_cvTrailVTF.AddChangeHook(ConVarChange);
-	g_cvTrailVMT = CreateConVar("sm_zleader_trail_vmt", "materials/nide/leader/trail.vmt", "The trail .vmt file");
-	g_cvTrailVMT.AddChangeHook(ConVarChange);
+	g_cvNeonLeader = CreateConVar("sm_zleader_neon", "1", "Put a neon light parented to the leader");
+	g_cvGlowLeader = CreateConVar("sm_zleader_glow", "1", "Put a glow colors effect on the leader");
 	g_cvTrailPosition = CreateConVar("sm_zleader_trail_position", "0.0 0.0 10.0", "The trail position (X Y Z)");
-
-	// Marker model
-	g_cvMarkerMDL = CreateConVar("sm_zleader_marker_mdl", "models/oylsister/misc/signal_marker.mdl", "The signal marker .mdl file");
-	g_cvMarkerMDL.AddChangeHook(ConVarChange);
-	g_cvMarkerVTF = CreateConVar("sm_zleader_marker_vtf", "materials/oylsister/signal_marker/material0.vtf", "The signal marker .vtf file");
-	g_cvMarkerVTF.AddChangeHook(ConVarChange);
-	g_cvMarkerVMT = CreateConVar("sm_zleader_marker_vmt", "materials/oylsister/signal_marker/material0.vmt", "The signal marker .vmt file");
-	g_cvMarkerVMT.AddChangeHook(ConVarChange);
-	g_cvMarkerVTX80 = CreateConVar("sm_zleader_marker_vtx80", "models/oylsister/misc/signal_marker.dx80.vtx", "The signal marker .vtx file (DirectX 80)");
-	g_cvMarkerVTX80.AddChangeHook(ConVarChange);
-	g_cvMarkerVTX90 = CreateConVar("sm_zleader_marker_vtx90", "models/oylsister/misc/signal_marker.dx90.vtx", "The signal marker .vtx file (DirectX 90)");
-	g_cvMarkerVTX90.AddChangeHook(ConVarChange);
-	g_cvMarkerVVD = CreateConVar("sm_zleader_marker_vvd", "oylsister/misc/signal_marker.vvd", "The signal marker .vvd file");
-	g_cvMarkerVVD.AddChangeHook(ConVarChange);
-
-	// Defend Here
-	g_cvDefendVTF = CreateConVar("sm_zleader_defend_vtf", "materials/nide/leader/defend.vtf", "The defend here .vtf file");
-	g_cvDefendVTF.AddChangeHook(ConVarChange);
-	g_cvDefendVMT = CreateConVar("sm_zleader_defend_vmt", "materials/nide/leader/defend.vmt", "The defend here .vmt file");
-	g_cvDefendVMT.AddChangeHook(ConVarChange);
-	g_cvDefend_Color = CreateConVar("sm_zleader_defend_color", "211 211 211 255", "Marker color: Defend (RGBA)");
-
-	// ZM TP
-	g_cvZMTP_VTF = CreateConVar("sm_zleader_zmtp_vtf", "materials/oylsister/eds_zmtp.vtf", "Marker: ZM TP .vtf file");
-	g_cvZMTP_VTF.AddChangeHook(ConVarChange);
-	g_cvZMTP_VMT = CreateConVar("sm_zleader_zmtp_vmt", "materials/oylsister/eds_zmtp.vmt", "Marker: ZM TP .vmt file");
-	g_cvZMTP_VMT.AddChangeHook(ConVarChange);
-	g_cvZMTP_Color = CreateConVar("sm_zleader_zmtp_color", "214 72 255 255", "Marker color: ZM TP (RBGA)");
-
-	// Arrow
-	g_cvArrowVTF = CreateConVar("sm_zleader_arrow_vtf", "materials/oylsister/eds_arrow.vtf", "Marker: Arrow .vtf file");
-	g_cvArrowVTF.AddChangeHook(ConVarChange);
-	g_cvArrowVMT = CreateConVar("sm_zleader_arrow_vmt", "materials/oylsister/eds_arrow.vmt", "Marker: Arrow .vmt file");
-	g_cvArrowVMT.AddChangeHook(ConVarChange);
-	g_cvArrow_Color = CreateConVar("sm_zleader_arrow_color", "72 255 72 255", "Marker color: Arrow (RGBA)");
-
-	// No Doorhug
-	g_cvNoHugVTF = CreateConVar("sm_zleader_nohug_vtf", "materials/oylsister/eds_nohug.vtf", "Marker: No Doorhug .vtf file");
-	g_cvNoHugVTF.AddChangeHook(ConVarChange);
-	g_cvNoHugVMT = CreateConVar("sm_zleader_nohug_vmt", "materials/oylsister/eds_nohug.vmt", "Marker: No Doorhug .vmt file");
-	g_cvNoHugVMT.AddChangeHook(ConVarChange);
-	g_cvNoHug_Color = CreateConVar("sm_zleader_nohug_color", "255 72 72 255", "Marker color: No Doorhug (RGBA)");
-
-	// CodeName - Alpha
-	g_cvAlphaVTF = CreateConVar("sm_zleader_alpha_vtf", "materials/nide/leader/codename/alpha.vtf", "Sprite: Codename - Alpha .vtf file");
-	g_cvAlphaVTF.AddChangeHook(ConVarChange);
-	g_cvAlphaVMT = CreateConVar("sm_zleader_alpha_vmt", "materials/nide/leader/codename/alpha.vmt", "Sprite: Codename - Alpha .vmt file");
-	g_cvAlphaVMT.AddChangeHook(ConVarChange);
-
-	// CodeName - Bravo
-	g_cvBravoVTF = CreateConVar("sm_zleader_bravo_vtf", "materials/nide/leader/codename/bravo.vtf", "Sprite: Codename - Bravo .vtf file");
-	g_cvBravoVTF.AddChangeHook(ConVarChange);
-	g_cvBravoVMT = CreateConVar("sm_zleader_bravo_vmt", "materials/nide/leader/codename/bravo.vmt", "Sprite: Codename - Bravo .vmt file");
-	g_cvBravoVMT.AddChangeHook(ConVarChange);
-
-	// CodeName - Charlie
-	g_cvCharlieVTF = CreateConVar("sm_zleader_charlie_vtf", "materials/nide/leader/codename/charlie.vtf", "Sprite: Codename - Charlie .vtf file");
-	g_cvCharlieVTF.AddChangeHook(ConVarChange);
-	g_cvCharlieVMT = CreateConVar("sm_zleader_charlie_vmt", "materials/nide/leader/codename/charlie.vmt", "Sprite: Codename - Charlie .vmt file");
-	g_cvCharlieVMT.AddChangeHook(ConVarChange);
-
-	// CodeName - Delta
-	g_cvDeltaVTF = CreateConVar("sm_zleader_delta_vtf", "materials/nide/leader/codename/delta.vtf", "Sprite: Codename - Delta .vtf file");
-	g_cvDeltaVTF.AddChangeHook(ConVarChange);
-	g_cvDeltaVMT = CreateConVar("sm_zleader_delta_vmt", "materials/nide/leader/codename/delta.vmt", "Sprite: Codename - Delta .vmt file");
-	g_cvDeltaVMT.AddChangeHook(ConVarChange);
-
-	// CodeName - Echo
-	g_cvEchoVTF = CreateConVar("sm_zleader_echo_vtf", "materials/nide/leader/codename/echo.vtf", "Sprite: Codename - Echo .vtf file");
-	g_cvEchoVTF.AddChangeHook(ConVarChange);
-	g_cvEchoVMT = CreateConVar("sm_zleader_echo_vmt", "materials/nide/leader/codename/echo.vmt", "Sprite: Codename - Echo .vmt file");
-	g_cvEchoVMT.AddChangeHook(ConVarChange);
-
-	AutoExecConfig(true);
 
 	AddCommandListener(HookPlayerChat, "say");
 	AddCommandListener(HookPlayerChatTeam, "say_team");
@@ -270,90 +194,124 @@ public void OnPluginStart() {
 	}
 }
 
-public void RefreshDownload_andCacheTable() {
-	g_cvDefendVTF.GetString(DefendVTF, sizeof(DefendVTF));
-	g_cvDefendVMT.GetString(DefendVMT, sizeof(DefendVMT));
-	g_cvFollowVTF.GetString(FollowVTF, sizeof(FollowVTF));
-	g_cvFollowVMT.GetString(FollowVMT, sizeof(FollowVMT));
-	g_cvTrailVTF.GetString(TrailVTF, sizeof(TrailVTF));
-	g_cvTrailVMT.GetString(TrailVMT, sizeof(TrailVMT));
-	g_cvMarkerMDL.GetString(MarkerMDL, sizeof(MarkerMDL));
-	g_cvMarkerVTX80.GetString(MarkerVTX80, sizeof(MarkerVTX80));
-	g_cvMarkerVTX90.GetString(MarkerVTX90, sizeof(MarkerVTX90));
-	g_cvMarkerVVD.GetString(MarkerVVD, sizeof(MarkerVVD));
-	g_cvMarkerVTF.GetString(MarkerVTF, sizeof(MarkerVTF));
-	g_cvMarkerVMT.GetString(MarkerVMT, sizeof(MarkerVMT));
-	g_cvZMTP_VTF.GetString(ZMTP_VTF, sizeof(ZMTP_VTF));
-	g_cvZMTP_VMT.GetString(ZMTP_VMT, sizeof(ZMTP_VMT));
-	g_cvArrowVTF.GetString(ArrowVTF, sizeof(ArrowVTF));
-	g_cvArrowVMT.GetString(ArrowVMT, sizeof(ArrowVMT));
-	g_cvNoHugVTF.GetString(NoHugVTF, sizeof(NoHugVTF));
-	g_cvNoHugVMT.GetString(NoHugVMT, sizeof(NoHugVMT));
+void LoadConfig() {
+	char spath[PLATFORM_MAX_PATH];
+	BuildPath(Path_SM, spath, sizeof(spath), "configs/zleader/configs.txt");
 
-	g_cvAlphaVTF.GetString(AlphaVTF, sizeof(AlphaVTF));
-	g_cvAlphaVMT.GetString(AlphaVMT, sizeof(AlphaVMT));
-	g_cvBravoVTF.GetString(BravoVTF, sizeof(BravoVTF));
-	g_cvBravoVMT.GetString(BravoVMT, sizeof(BravoVMT));
-	g_cvCharlieVTF.GetString(CharlieVTF, sizeof(CharlieVTF));
-	g_cvCharlieVMT.GetString(CharlieVMT, sizeof(CharlieVMT));
-	g_cvDeltaVTF.GetString(DeltaVTF, sizeof(DeltaVTF));
-	g_cvDeltaVMT.GetString(DeltaVMT, sizeof(DeltaVMT));
-	g_cvEchoVTF.GetString(EchoVTF, sizeof(EchoVTF));
-	g_cvEchoVMT.GetString(EchoVMT, sizeof(EchoVMT));
+	if (!FileExists(spath)) {
+		SetFailState("Couldn't find config file: %s", spath);
+		return;
+	}
 
-	AddFileToDownloadsTable(DefendVTF);
-	AddFileToDownloadsTable(DefendVMT);
-	AddFileToDownloadsTable(FollowVTF);
-	AddFileToDownloadsTable(FollowVMT);
-	AddFileToDownloadsTable(TrailVTF);
-	AddFileToDownloadsTable(TrailVMT);
-	AddFileToDownloadsTable(MarkerMDL);
-	AddFileToDownloadsTable(MarkerVTX80);
-	AddFileToDownloadsTable(MarkerVTX90);
-	AddFileToDownloadsTable(MarkerVVD);
-	AddFileToDownloadsTable(MarkerVTF);
-	AddFileToDownloadsTable(MarkerVMT);
-	AddFileToDownloadsTable(ZMTP_VTF);
-	AddFileToDownloadsTable(ZMTP_VMT);
-	AddFileToDownloadsTable(ArrowVTF);
-	AddFileToDownloadsTable(ArrowVMT);
-	AddFileToDownloadsTable(NoHugVTF);
-	AddFileToDownloadsTable(NoHugVMT);
+	KeyValues kv = CreateKeyValues("zleader");
 
-	AddFileToDownloadsTable(AlphaVTF);
-	AddFileToDownloadsTable(AlphaVMT);
-	AddFileToDownloadsTable(BravoVTF);
-	AddFileToDownloadsTable(BravoVMT);
-	AddFileToDownloadsTable(CharlieVTF);
-	AddFileToDownloadsTable(CharlieVMT);
-	AddFileToDownloadsTable(DeltaVTF);
-	AddFileToDownloadsTable(DeltaVMT);
-	AddFileToDownloadsTable(EchoVTF);
-	AddFileToDownloadsTable(EchoVMT);
+	FileToKeyValues(kv, spath);
 
-	PrecacheGeneric(DefendVTF, true);
-	PrecacheGeneric(DefendVMT, true);
-	PrecacheGeneric(FollowVTF, true);
-	PrecacheGeneric(FollowVMT, true);
-	PrecacheGeneric(TrailVTF, true);
-	PrecacheGeneric(TrailVMT, true);
-	PrecacheModel(MarkerMDL, true);
-	PrecacheGeneric(ZMTP_VTF, true);
-	PrecacheGeneric(ZMTP_VMT, true);
-	PrecacheGeneric(ArrowVTF, true);
-	PrecacheGeneric(ArrowVMT, true);
-	PrecacheGeneric(NoHugVTF, true);
-	PrecacheGeneric(NoHugVMT, true);
-	PrecacheGeneric(AlphaVTF, true);
-	PrecacheGeneric(AlphaVMT, true);
-	PrecacheGeneric(BravoVTF, true);
-	PrecacheGeneric(BravoVMT, true);
-	PrecacheGeneric(CharlieVTF, true);
-	PrecacheGeneric(CharlieVMT, true);
-	PrecacheGeneric(DeltaVTF, true);
-	PrecacheGeneric(DeltaVMT, true);
-	PrecacheGeneric(EchoVTF, true);
-	PrecacheGeneric(EchoVMT, true);
+	if (KvGotoFirstSubKey(kv)) {
+		TotalLeader = 0;
+
+		do {
+			KvGetString(kv, "codename", g_LeaderData[TotalLeader].L_Codename, 48);
+
+			g_LeaderData[TotalLeader].L_Slot = KvGetNum(kv, "leader_slot", -1);
+
+			KvGetString(kv, "codename_vmt", g_LeaderData[TotalLeader].L_CodeNameVMT, PLATFORM_MAX_PATH);
+			KvGetString(kv, "codename_vtf", g_LeaderData[TotalLeader].L_CodeNameVTF, PLATFORM_MAX_PATH);
+
+			KvGetString(kv, "trail_vmt", g_LeaderData[TotalLeader].L_TrailVMT, PLATFORM_MAX_PATH);
+			KvGetString(kv, "trail_vtf", g_LeaderData[TotalLeader].L_TrailVTF, PLATFORM_MAX_PATH);
+			
+			KvGetString(kv, "follow_vmt", g_LeaderData[TotalLeader].L_FollowVMT, PLATFORM_MAX_PATH);
+			KvGetString(kv, "follow_vtf", g_LeaderData[TotalLeader].L_FollowVTF, PLATFORM_MAX_PATH);
+
+			KvGetString(kv, "marker_mdl", g_LeaderData[TotalLeader].L_MarkerMDL, PLATFORM_MAX_PATH);
+			KvGetString(kv, "marker_vmt", g_LeaderData[TotalLeader].L_MarkerVMT, PLATFORM_MAX_PATH);
+
+			KvGetString(kv, "arrow_vmt", g_LeaderData[TotalLeader].L_MarkerArrowVMT, PLATFORM_MAX_PATH);
+			KvGetString(kv, "arrow_vtf", g_LeaderData[TotalLeader].L_MarkerArrowVTF, PLATFORM_MAX_PATH);
+			KvGetColor(kv, "arrow_color", g_LeaderData[TotalLeader].L_iColorArrow[0], g_LeaderData[TotalLeader].L_iColorArrow[1], g_LeaderData[TotalLeader].L_iColorArrow[2], g_LeaderData[TotalLeader].L_iColorArrow[3]);
+
+			KvGetString(kv, "defend_vmt", g_LeaderData[TotalLeader].L_MarkerDefend_VMT, PLATFORM_MAX_PATH);
+			KvGetString(kv, "defend_vtf", g_LeaderData[TotalLeader].L_MarkerDefend_VTF, PLATFORM_MAX_PATH);
+			KvGetColor(kv, "defend_color", g_LeaderData[TotalLeader].L_iColorDefend[0], g_LeaderData[TotalLeader].L_iColorDefend[1], g_LeaderData[TotalLeader].L_iColorDefend[2], g_LeaderData[TotalLeader].L_iColorDefend[3]);
+
+			KvGetString(kv, "zmtp_vmt", g_LeaderData[TotalLeader].L_MarkerZMTP_VMT, PLATFORM_MAX_PATH);
+			KvGetString(kv, "zmtp_vtf", g_LeaderData[TotalLeader].L_MarkerZMTP_VTF, PLATFORM_MAX_PATH);
+			KvGetColor(kv, "zmtp_color", g_LeaderData[TotalLeader].L_iColorZMTP[0], g_LeaderData[TotalLeader].L_iColorZMTP[1], g_LeaderData[TotalLeader].L_iColorZMTP[2], g_LeaderData[TotalLeader].L_iColorZMTP[3]);
+
+			KvGetString(kv, "nodoorhug_vmt", g_LeaderData[TotalLeader].L_MarkerNOHUG_VMT, PLATFORM_MAX_PATH);
+			KvGetString(kv, "nodoorhug_vtf", g_LeaderData[TotalLeader].L_MarkerNOHUG_VTF, PLATFORM_MAX_PATH);
+			KvGetColor(kv, "nodoorhug_color", g_LeaderData[TotalLeader].L_iColorNOHUG[0], g_LeaderData[TotalLeader].L_iColorNOHUG[1], g_LeaderData[TotalLeader].L_iColorNOHUG[2], g_LeaderData[TotalLeader].L_iColorNOHUG[3]);
+			
+			TotalLeader++;
+		}
+		while(KvGotoNextKey(kv));
+	}
+
+	delete kv;
+}
+
+void LoadDownloadTable() {
+	char spath[PLATFORM_MAX_PATH];
+	BuildPath(Path_SM, spath, sizeof(spath), "configs/zleader/downloads.txt");
+
+	File file = OpenFile(spath, "r");
+
+	char buffer[PLATFORM_MAX_PATH];
+	while (!IsEndOfFile(file)) {
+		ReadFileLine(file, buffer, sizeof(buffer));
+
+		int pos;
+		pos = StrContains(buffer, "//");
+		if (pos != -1) buffer[pos] = '\0';
+		
+		pos = StrContains(buffer, "#");
+		if (pos != -1) buffer[pos] = '\0';
+
+		pos = StrContains(buffer, ";");
+		if (pos != -1) buffer[pos] = '\0';
+
+		pos = StrContains(buffer, "*");
+		if (pos != -1) buffer[pos] = '\0';
+		
+		TrimString(buffer);
+		if (buffer[0] == '\0') continue;
+
+		AddFileToDownloadsTable(buffer);
+	}
+
+	delete file;
+}
+
+void PrecacheConfig() {
+	for(int i = 0; i < TotalLeader; i++) {
+		if (g_LeaderData[i].L_CodeNameVMT[0] != '\0')
+			PrecacheGeneric(g_LeaderData[i].L_CodeNameVMT, true);
+
+		if (g_LeaderData[i].L_TrailVMT[0] != '\0')
+			PrecacheGeneric(g_LeaderData[i].L_TrailVMT, true);
+
+		if (g_LeaderData[i].L_FollowVMT[0] != '\0')
+			PrecacheGeneric(g_LeaderData[i].L_FollowVMT, true);
+
+		if (g_LeaderData[i].L_MarkerMDL[0] != '\0')
+			PrecacheModel(g_LeaderData[i].L_MarkerMDL, true);
+
+		if (g_LeaderData[i].L_MarkerVMT[0] != '\0')
+			PrecacheGeneric(g_LeaderData[i].L_MarkerVMT, true);
+
+		if (g_LeaderData[i].L_MarkerArrowVMT[0] != '\0')
+			PrecacheGeneric(g_LeaderData[i].L_MarkerArrowVMT, true);
+
+		if (g_LeaderData[i].L_MarkerZMTP_VMT[0] != '\0')
+			PrecacheGeneric(g_LeaderData[i].L_MarkerZMTP_VMT, true);
+
+		if (g_LeaderData[i].L_MarkerNOHUG_VMT[0] != '\0')
+			PrecacheGeneric(g_LeaderData[i].L_MarkerNOHUG_VMT, true);
+
+		if (g_LeaderData[i].L_MarkerDefend_VMT[0] != '\0')
+			PrecacheGeneric(g_LeaderData[i].L_MarkerDefend_VMT, true);
+	}
 }
 
 /* =========================================================================
@@ -364,25 +322,6 @@ public void OnPluginEnd() {
 	RemoveMultiTargetFilter("@!leaders", Filter_NotLeaders);
 	RemoveMultiTargetFilter("@leader", Filter_Leader);
 	RemoveMultiTargetFilter("@!leader", Filter_NotLeader);
-}
-
-/* =========================================================================
-||  CVAR CHANGES
-============================================================================ */
-public void ConVarChange(ConVar CVar, const char[] oldVal, const char[] newVal)
-{
-	char ZMTP[64], Defend[64], Arrow[64], NoHug[64];
-
-	g_cvZMTP_Color.GetString(ZMTP, sizeof(ZMTP));
-	RGBAColorStringToArray(ZMTP, g_iColorZMTP);
-	g_cvDefend_Color.GetString(Defend, sizeof(Defend));
-	RGBAColorStringToArray(Defend, g_iColorDefend);
-	g_cvArrow_Color.GetString(Arrow, sizeof(Arrow));
-	RGBAColorStringToArray(Arrow, g_iColorArrow);
-	g_cvNoHug_Color.GetString(NoHug, sizeof(NoHug));
-	RGBAColorStringToArray(NoHug, g_iColorNoHug);
-
-	RefreshDownload_andCacheTable();
 }
 
 /* =========================================================================
@@ -411,6 +350,11 @@ public void OnLibraryAdded(const char[] name) {
 ||  INITIAL SETUP (Cache, dl table, load cfg..)
 ============================================================================ */
 public void OnMapStart() {
+	LoadConfig();
+	LoadDownloadTable();
+	PrecacheConfig();
+	UpdateLeaders();
+
 	Handle gameConfig = LoadGameConfigFile("funcommands.games");
 	if (gameConfig == null) {
 		SetFailState("Unable to load game config funcommands.games");
@@ -423,19 +367,6 @@ public void OnMapStart() {
 
 	if (GameConfGetKeyValue(gameConfig, "SpriteHalo", buffer, sizeof(buffer)) && buffer[0])
 		g_HaloSprite = PrecacheModel(buffer);
-
-	UpdateLeaders();
-}
-
-public void OnConfigsExecuted() {
-	RefreshDownload_andCacheTable();
-
-	// Small hack to make sure model will work properly after sv rr
-	char buff[PLATFORM_MAX_PATH], temp[PLATFORM_MAX_PATH];
-	g_cvMarkerVTX90.GetString(buff, sizeof(buff));
-	g_cvMarkerVTX80.GetString(temp, sizeof(temp));
-	SetConVarString(g_cvMarkerVTX90, temp, false, false);
-	SetConVarString(g_cvMarkerVTX90, buff, false, false);
 }
 
 /* =========================================================================
@@ -620,6 +551,22 @@ public void OnPlayerDeath(Event event, const char[] name, bool dontBroadcast) {
 	RemoveLeader(client, R_DIED, true);
 }
 
+public void ZR_OnClientInfected(int client, int attacker, bool motherinfect, bool override, bool respawn)
+{
+	if (!IsClientLeader(client))
+		return;
+
+	char codename[32];
+	int slot = GetClientLeaderSlot(client);
+	GetLeaderCodename(slot, codename, sizeof(codename));
+
+	for(int i = 1; i <= MaxClients; i++)
+	{
+		if (IsClientInGame(i))
+			CPrintToChat(i, "%T %T", "Prefix", i, "Get Infected", i, codename, client);
+	}
+}
+
 public void OnRoundEnd(Event event, const char[] name, bool dontBroadcast) {
 	// We create timer for don't insta remove leader (usefull for API)
 	CreateTimer(0.3, RoundEndClean, INVALID_HANDLE, TIMER_FLAG_NO_MAPCHANGE);
@@ -662,7 +609,7 @@ public Action Command_Leader(int client, int args) {
 					return Plugin_Stop;
 				}
 
-				for (int i = 0; i < MAXLEADER; i++) {
+				for (int i = 0; i < TotalLeader; i++) {
 					if (IsLeaderSlotFree(i)) {
 						SetClientLeader(client, _, i);
 						LeaderMenu(client);
@@ -703,7 +650,7 @@ public Action Command_Leader(int client, int args) {
 				return Plugin_Handled;
 			}
 
-			for (int i = 0; i < MAXLEADER; i++) {
+			for (int i = 0; i < TotalLeader; i++) {
 				if (IsLeaderSlotFree(i)) {
 					CReplyToCommand(client, "%t %t", "Prefix", "You set client leader", target);
 					SetClientLeader(target, client, i);
@@ -825,7 +772,9 @@ public int LeaderMenuHandler(Menu menu, MenuAction action, int param1, int param
 						if (g_iClientSprite[param1] != SP_FOLLOW) {
 							RemoveSpriteFollow(param1);
 							g_iClientSprite[param1] = SP_FOLLOW;
-							g_iSpriteFollow[param1] = AttachSprite(param1, FollowVMT, 1);
+							int slot = GetLeaderIndexWithLeaderSlot(g_iClientLeaderSlot[param1]);
+							if (g_LeaderData[slot].L_FollowVMT[0] != '\0')
+								g_iSpriteFollow[param1] = AttachSprite(param1, g_LeaderData[slot].L_FollowVMT, 1);
 						} else {
 							RemoveSpriteFollow(param1);
 							g_iClientSprite[param1] = SP_NONE;
@@ -900,7 +849,7 @@ public Action Command_CurrentLeader(int client, int args) {
 	menu.SetTitle("%T %T", "Menu Prefix", client, "Menu Leader list title", client);
 	CReplyToCommand(client, "%T %T", "Prefix", client, "Current Leaders", client);
 	
-	for (int i = 0; i < MAXLEADER; i++) {
+	for (int i = 0; i < TotalLeader; i++) {
 		char codename[32];
 		char sLine[128];
 
@@ -941,7 +890,7 @@ public Action Command_VoteLeader(int client, int args) {
 		return Plugin_Handled;
 	}
 	int count = 0;
-	for (int i = 0; i < MAXLEADER; i++) {
+	for (int i = 0; i < TotalLeader; i++) {
 		if (!IsLeaderSlotFree(i))
 			count++;
 	}
@@ -1083,7 +1032,7 @@ public void RemoveLeaderList(int client) {
 	Format(title, sizeof(title), "%t %t \n%t", "Menu Prefix", "Menu Leader list title", "Menu Remove Leader title");
 	menu.SetTitle("%s", title);
 	
-	for (int i = 0; i < MAXLEADER; i++) {
+	for (int i = 0; i < TotalLeader; i++) {
 		char codename[32];
 		char sLine[128];
 
@@ -1106,7 +1055,7 @@ public void RemoveLeaderList(int client) {
 public int RemoveLeaderListMenuHandler(Menu menu, MenuAction action, int param1, int param2) {
 	switch (action) {
 		case MenuAction_Select: {
-			for (int i = 0; i < MAXLEADER; i++) {
+			for (int i = 0; i < TotalLeader; i++) {
 				if (param2 == i && !IsLeaderSlotFree(i))
 					RemoveLeader(g_iCurrentLeader[i], R_ADMINFORCED, true);
 			}
@@ -1146,6 +1095,8 @@ stock void CreateTrail(int client) {
 
 	if (!IsPlayerAlive(client) || !(1 < GetClientTeam(client) < 4))
 		return;
+	
+	int slot = GetLeaderIndexWithLeaderSlot(g_iClientLeaderSlot[client]);
 
 	g_TrailModel[client] = CreateEntityByName("env_spritetrail");
 
@@ -1153,7 +1104,7 @@ stock void CreateTrail(int client) {
 		DispatchKeyValueFloat(g_TrailModel[client], "lifetime", 2.0);
 		DispatchKeyValue(g_TrailModel[client], "startwidth", "25");
 		DispatchKeyValue(g_TrailModel[client], "endwidth", "15");
-		DispatchKeyValue(g_TrailModel[client], "spritename", TrailVMT);
+		DispatchKeyValue(g_TrailModel[client], "spritename", g_LeaderData[slot].L_TrailVMT);
 		DispatchKeyValue(g_TrailModel[client], "rendercolor", "255 255 255");
 		DispatchKeyValue(g_TrailModel[client], "renderamt", "255");
 		DispatchKeyValue(g_TrailModel[client], "rendermode", "0");
@@ -1242,6 +1193,12 @@ public Action Timer_Beacon(Handle timer, any value) {
 	GetClientAbsOrigin(client, vec);
 	vec[2] += 10;
 
+	// First beacon beam
+	int greyColor[4] = {128, 128, 128, 255};
+	TE_SetupBeamRingPoint(vec, 10.0, 375.0, g_BeamSprite, g_HaloSprite, 0, 20, 0.5, 12.0, 0.0, greyColor, 10, 0);
+	TE_SendToAll();
+
+	// Second beacon beam
 	int rainbowColor[4];
 	float i = GetGameTime();
 	float Frequency = 2.5;
@@ -1249,12 +1206,6 @@ public Action Timer_Beacon(Handle timer, any value) {
 	rainbowColor[1] = RoundFloat(Sine(Frequency * i + 2.0943951) * 127.0 + 128.0);
 	rainbowColor[2] = RoundFloat(Sine(Frequency * i + 4.1887902) * 127.0 + 128.0);
 	rainbowColor[3] = 255;
-
-	// First beacon beam
-	TE_SetupBeamRingPoint(vec, 10.0, 375.0, g_BeamSprite, g_HaloSprite, 0, 20, 0.5, 12.0, 0.0, greyColor, 10, 0);
-	TE_SendToAll();
-
-	// Second beacon beam
 	TE_SetupBeamRingPoint(vec, 10.0, 375.0, g_BeamSprite, g_HaloSprite, 0, 15, 0.6, 25.0, 0.5, rainbowColor, 10, 0);
 	TE_SendToAll();
 
@@ -1488,21 +1439,23 @@ public void SpawnMarker(int client, int type) {
 		return;
 	}
 
+	int slot = GetLeaderIndexWithLeaderSlot(g_iClientLeaderSlot[client]);
+
 	if (type == MK_NORMAL) {
-		g_iMarkerEntities[type][client] = SpawnSpecialMarker(client, ArrowVMT);
-		g_iNeonEntities[type][client] = SetupSpecialNeon(client, g_iColorArrow, type);
+		g_iMarkerEntities[type][client] = SpawnSpecialMarker(client, g_LeaderData[slot].L_MarkerArrowVMT);
+		g_iNeonEntities[type][client] = SetupSpecialNeon(client, g_LeaderData[slot].L_iColorArrow, type);
 	} else if (type == MK_DEFEND) {
-		g_iMarkerEntities[type][client] = SpawnSpecialMarker(client, DefendVMT);
-		g_iNeonEntities[type][client] = SetupSpecialNeon(client, g_iColorDefend, type);
+		g_iMarkerEntities[type][client] = SpawnSpecialMarker(client, g_LeaderData[slot].L_MarkerDefend_VMT);
+		g_iNeonEntities[type][client] = SetupSpecialNeon(client, g_LeaderData[slot].L_iColorDefend, type);
 	} else if (type == MK_NOHUG) {
-		g_iMarkerEntities[type][client] = SpawnSpecialMarker(client, NoHugVMT);
-		g_iNeonEntities[type][client] = SetupSpecialNeon(client, g_iColorZMTP, type);
+		g_iMarkerEntities[type][client] = SpawnSpecialMarker(client, g_LeaderData[slot].L_MarkerNOHUG_VMT);
+		g_iNeonEntities[type][client] = SetupSpecialNeon(client, g_LeaderData[slot].L_iColorNOHUG, type);
 	} else if (type == MK_ZMTP) {
-		g_iMarkerEntities[type][client] = SpawnSpecialMarker(client, ZMTP_VMT);
-		g_iNeonEntities[type][client] = SetupSpecialNeon(client, g_iColorNoHug, type);
+		g_iMarkerEntities[type][client] = SpawnSpecialMarker(client, g_LeaderData[slot].L_MarkerZMTP_VMT);
+		g_iNeonEntities[type][client] = SetupSpecialNeon(client, g_LeaderData[slot].L_iColorZMTP, type);
 	}
 
-	g_iClientMarker[type][client] = SpawnAimMarker(client, MarkerMDL, type);
+	g_iClientMarker[type][client] = SpawnAimMarker(client, g_LeaderData[slot].L_MarkerMDL, type);
 }
 
 public int SpawnAimMarker(int client, char[] model, int type) {
@@ -1527,14 +1480,16 @@ public int SpawnAimMarker(int client, char[] model, int type) {
 	DispatchKeyValue(Ent, "modelscale", "0.9");
 	DispatchSpawn(Ent);
 
+	int slot = GetLeaderIndexWithLeaderSlot(g_iClientLeaderSlot[client]);
+
 	if (type == MK_NORMAL)
-		SetEntityRenderColor(Ent, g_iColorArrow[0], g_iColorArrow[1], g_iColorArrow[2], g_iColorArrow[3]);
+		SetEntityRenderColor(Ent, g_LeaderData[slot].L_iColorArrow[0], g_LeaderData[slot].L_iColorArrow[1], g_LeaderData[slot].L_iColorArrow[2], g_LeaderData[slot].L_iColorArrow[3]);
 	else if (type  == MK_DEFEND)
-		SetEntityRenderColor(Ent, g_iColorDefend[0], g_iColorDefend[1], g_iColorDefend[2], g_iColorDefend[3]);
+		SetEntityRenderColor(Ent, g_LeaderData[slot].L_iColorDefend[0], g_LeaderData[slot].L_iColorDefend[1], g_LeaderData[slot].L_iColorDefend[2], g_LeaderData[slot].L_iColorDefend[3]);
 	else if (type  == MK_NOHUG)
-		SetEntityRenderColor(Ent, g_iColorNoHug[0], g_iColorNoHug[1], g_iColorNoHug[2], g_iColorNoHug[3]);
+		SetEntityRenderColor(Ent, g_LeaderData[slot].L_iColorNOHUG[0], g_LeaderData[slot].L_iColorNOHUG[1], g_LeaderData[slot].L_iColorNOHUG[2], g_LeaderData[slot].L_iColorNOHUG[3]);
 	else
-		SetEntityRenderColor(Ent, g_iColorZMTP[0], g_iColorZMTP[1], g_iColorZMTP[2], g_iColorZMTP[3]);
+		SetEntityRenderColor(Ent, g_LeaderData[slot].L_iColorZMTP[0], g_LeaderData[slot].L_iColorZMTP[1], g_LeaderData[slot].L_iColorZMTP[2], g_LeaderData[slot].L_iColorZMTP[3]);
 
 	TeleportEntity(Ent, g_pos, NULL_VECTOR, NULL_VECTOR);
 	SetEntProp(Ent, Prop_Send, "m_CollisionGroup", 1);
@@ -1636,18 +1591,19 @@ stock int SetupSpecialNeon(int client, int color[4], int type) {
 	}
 
 	char sColor[64], sTargetName[64];
+	int slot = GetLeaderIndexWithLeaderSlot(g_iClientLeaderSlot[client]);
 
 	if (type == MK_NORMAL) {
-		Format(sColor, sizeof(sColor), "%i %i %i %i", g_iColorArrow[0], g_iColorArrow[1], g_iColorArrow[2], g_iColorArrow[3]);
+		Format(sColor, sizeof(sColor), "%i %i %i %i", g_LeaderData[slot].L_iColorArrow[0], g_LeaderData[slot].L_iColorArrow[1], g_LeaderData[slot].L_iColorArrow[2], g_LeaderData[slot].L_iColorArrow[3]);
 		Format(sTargetName, sizeof(sTargetName), "MK_NORMAL%d", g_sSteamIDs64[client]);
 	} else if (type  == MK_DEFEND) {
-		Format(sColor, sizeof(sColor), "%i %i %i %i", g_iColorDefend[0], g_iColorDefend[1], g_iColorDefend[2], g_iColorDefend[3]);
+		Format(sColor, sizeof(sColor), "%i %i %i %i", g_LeaderData[slot].L_iColorDefend[0], g_LeaderData[slot].L_iColorDefend[1], g_LeaderData[slot].L_iColorDefend[2], g_LeaderData[slot].L_iColorDefend[3]);
 		Format(sTargetName, sizeof(sTargetName), "MK_DEFEND%d", g_sSteamIDs64[client]);
 	} else if (type  == MK_NOHUG) {
-		Format(sColor, sizeof(sColor), "%i %i %i %i", g_iColorNoHug[0], g_iColorNoHug[1], g_iColorNoHug[2], g_iColorNoHug[3]);
+		Format(sColor, sizeof(sColor), "%i %i %i %i", g_LeaderData[slot].L_iColorNOHUG[0], g_LeaderData[slot].L_iColorNOHUG[1], g_LeaderData[slot].L_iColorNOHUG[2], g_LeaderData[slot].L_iColorNOHUG[3]);
 		Format(sTargetName, sizeof(sTargetName), "MK_NOHUG%d", g_sSteamIDs64[client]);
 	} else {
-		Format(sColor, sizeof(sColor), "%i %i %i %i", g_iColorZMTP[0], g_iColorZMTP[1], g_iColorZMTP[2], g_iColorZMTP[3]);
+		Format(sColor, sizeof(sColor), "%i %i %i %i", g_LeaderData[slot].L_iColorZMTP[0], g_LeaderData[slot].L_iColorZMTP[1], g_LeaderData[slot].L_iColorZMTP[2], g_LeaderData[slot].L_iColorZMTP[3]);
 		Format(sTargetName, sizeof(sTargetName), "MK_ZMTP%d", g_sSteamIDs64[client]);
 	}
 
@@ -1847,21 +1803,16 @@ void SetClientLeader(int client, int adminset = -1, int slot) {
 	if (g_ccc)
 		GetClientChat(client);
 
-	if (slot == ALPHA)
-		g_iSpriteLeader[client] = AttachSprite(client, AlphaVMT, 0);
-	else if (slot == BRAVO)
-		g_iSpriteLeader[client] = AttachSprite(client, BravoVMT, 0);
-	else if (slot == CHARLIE)
-		g_iSpriteLeader[client] = AttachSprite(client, CharlieVMT, 0);
-	else if (slot == DELTA)
-		g_iSpriteLeader[client] = AttachSprite(client, DeltaVMT, 0);
-	else
-		g_iSpriteLeader[client] = AttachSprite(client, EchoVMT, 0);
+	if (g_LeaderData[slot].L_CodeNameVMT[0] != '\0')
+		g_iSpriteLeader[client] = AttachSprite(client, g_LeaderData[slot].L_CodeNameVMT, 0);
 
-	SetupPlayerNeon(client);
-	// GlowColors
-	SDKHook(client, SDKHook_PostThinkPost, OnPostThinkPost);
-	ToolsSetEntityColor(client, g_iGlowColor[client][0], g_iGlowColor[client][1], g_iGlowColor[client][2]);
+	if (g_cvNeonLeader.BoolValue)
+		SetupPlayerNeon(client);
+
+	if (g_cvGlowLeader.BoolValue) {
+		SDKHook(client, SDKHook_PostThinkPost, OnPostThinkPost);
+		ToolsSetEntityColor(client, g_iGlowColor[client][0], g_iGlowColor[client][1], g_iGlowColor[client][2]);
+	}
 
 	for (int i = 1; i <= MaxClients; i++) {
 		if (IsClientInGame(i))
@@ -1895,8 +1846,16 @@ void RemoveLeader(int client, ResignReason reason, bool announce = true) {
 	RemoveSpriteFollow(client);
 	RemoveSpriteCodeName(client);
 
-	RemovePlayerNeon(client);
-	SDKUnhook(client, SDKHook_PostThinkPost, OnPostThinkPost);
+	if (g_cvNeonLeader.BoolValue)
+		RemovePlayerNeon(client);
+
+	if (g_cvGlowLeader.BoolValue) {
+		SDKUnhook(client, SDKHook_PostThinkPost, OnPostThinkPost);
+		g_iGlowColor[client][0] = 255;
+		g_iGlowColor[client][1] = 255;
+		g_iGlowColor[client][2] = 255;
+		ToolsSetEntityColor(client, g_iGlowColor[client][0], g_iGlowColor[client][1], g_iGlowColor[client][2]);
+	}
 
 	if (g_bTrailActive[client])
 		KillTrail(client);
@@ -1948,9 +1907,6 @@ void RemoveLeader(int client, ResignReason reason, bool announce = true) {
 		}
 	}
 
-	g_iGlowColor[client][0] = 255;
-	g_iGlowColor[client][1] = 255;
-	g_iGlowColor[client][2] = 255;
 	g_bClientLeader[client] = false;
 	g_iCurrentLeader[g_iClientLeaderSlot[client]] = -1;
 	g_iClientLeaderSlot[client] = -1;
@@ -1982,11 +1938,11 @@ public Action QuickMarkerMenuCommand(int client, const char[] command, int argc)
 // Flashlight : Marker Menu
 public Action OnPlayerRunCmd(int client, int &buttons, int &impulse) {
 	if (IsValidClient(client) && IsPlayerAlive(client) && IsClientLeader(client)) {
-		if (impulse == 100) {
+		if (impulse == 0x64) {
 			QuickMarkerCommand(client);
 			return Plugin_Changed;
 		}
-		if (impulse == 201) {
+		if (impulse == 0xC9) {
 			QuickLeaderCommand(client);
 			return Plugin_Continue;
 		}
@@ -2100,25 +2056,26 @@ public int Native_IsPossibleLeader(Handle hPlugins, int numParams) {
 	return IsPossibleLeader(client);
 }
 
-stock void GetLeaderCodename(int slot, char[] buffer, int maxlen) {
-	if (slot == ALPHA)
-		Format(buffer, maxlen, "Alpha");
+stock int GetLeaderIndexWithLeaderSlot(int slot) {
+	for(int i = 0; i < TotalLeader; i++) {
+		if (g_LeaderData[i].L_Slot == slot)
+			return i;
+	}
+	return -1;
+}
 
-	else if (slot == BRAVO)
-		Format(buffer, maxlen, "Bravo");
-
-	else if (slot == CHARLIE)
-		Format(buffer, maxlen, "Charlie");
-	
-	else if (slot == DELTA)
-		Format(buffer, maxlen, "Delta");
-
-	else
-		Format(buffer, maxlen, "Echo");
+stock int GetLeaderCodename(int slot, char[] buffer, int maxlen) {
+	for(int i = 0; i < TotalLeader; i++) {
+		if (g_LeaderData[i].L_Slot == slot) {
+			Format(buffer, maxlen, "%s", g_LeaderData[i].L_Codename);
+			return 1;
+		}
+	}
+	return -1;
 }
 
 stock int GetLeaderFreeSlot() {
-	for (int i = 0; i < MAXLEADER; i++) {
+	for (int i = 0; i < TotalLeader; i++) {
 		if (IsLeaderSlotFree(i))
 			return i;
 	}
@@ -2147,6 +2104,9 @@ stock bool IsClientAdmin(int client) {
 stock bool IsPossibleLeader(int client) {
 	for (int i = 0; i <= (MAXPOSSIBLELEADERS - 1); i++) {
 		if (StrEqual(g_sSteamIDs2[client], g_sLeaderAuth[i]))
+			return true;
+
+		if (IsClientAdmin(i))
 			return true;
 	}
 	return false;
@@ -2205,7 +2165,8 @@ public bool Filter_NotLeader(const char[] sPattern, Handle hClients) {
 ||  Leaders.ini Access
 ============================================================================ */
 stock void UpdateLeaders() {
-	BuildPath(Path_SM, g_sDataFile, sizeof(g_sDataFile), "configs/leader/leaders.ini");
+	char g_sDataFile[PLATFORM_MAX_PATH];
+	BuildPath(Path_SM, g_sDataFile, sizeof(g_sDataFile), "configs/zleader/leaders.ini");
 	for (int i = 0; i <= (MAXPOSSIBLELEADERS - 1); i++)
 		g_sLeaderAuth[i] = "";
 
