@@ -1,12 +1,41 @@
-materials/oylsister/eds_defend.vmt
-materials/oylsister/eds_defend.vtf
-materials/oylsister/eds_follow.vmt
-materials/oylsister/eds_follow.vtf
+* ============================================================================
+* CODENAME
+* ============================================================================
+materials/nide/leader/codename/alpha.vmt
+materials/nide/leader/codename/alpha.vtf
+materials/nide/leader/codename/bravo.vmt
+materials/nide/leader/codename/bravo.vtf
+materials/nide/leader/codename/charlie.vmt
+materials/nide/leader/codename/charlie.vtf
+materials/nide/leader/codename/delta.vmt
+materials/nide/leader/codename/delta.vtf
+materials/nide/leader/codename/echo.vmt
+materials/nide/leader/codename/echo.vtf
+
+* ============================================================================
+* FILES IN COMMON - Has to be adjust if using special per codename
+* ============================================================================
+// Trail
+materials/nide/leader/trail.vtf
+materials/nide/leader/trail.vmt
+// Follow Me
+materials/nide/leader/follow.vtf
+materials/nide/leader/follow.vmt
+
+// Defend Here
+materials/nide/leader/defend.vmt
+materials/nide/leader/defend.vtf
+// ZM TP
 materials/oylsister/eds_zmtp.vmt
 materials/oylsister/eds_zmtp.vtf
+// Arrow
+materials/oylsister/eds_arrow.vmt
+materials/oylsister/eds_arrow.vtf
+// No Doorhug
 materials/oylsister/eds_nohug.vmt
 materials/oylsister/eds_nohug.vtf
 
+// Marker model
 materials/oylsister/signal_marker/material0.vtf
 materials/oylsister/signal_marker/material0.vmt
 models/oylsister/misc/signal_marker.mdl

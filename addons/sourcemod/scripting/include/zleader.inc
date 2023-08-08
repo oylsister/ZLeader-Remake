@@ -3,7 +3,10 @@
 #endif
 #define _zleader_included
 
-#define MAXLEADER 10
+forward void Leader_SetClientLeader(int client, char[] sReason);
+forward void Leader_RemoveClientLeader(int client);
+
+#define MAXLEADER 5
 
 enum ResignReason
 {
@@ -20,6 +23,7 @@ native bool ZL_IsClientLeader(int client);
 native void ZL_RemoveLeader(int client, ResignReason reason, bool announce);
 native int ZL_GetClientLeaderSlot(int client);
 native bool ZL_IsLeaderSlotFree(int slot);
+native bool ZL_IsPossibleLeader(int client);
 
 public SharedPlugin __pl_zleader = 
 {
@@ -41,5 +45,6 @@ public __pl_zleader_SetNTVOptional()
 	MarkNativeAsOptional("ZL_RemoveLeader");
 	MarkNativeAsOptional("ZL_GetClientLeaderSlot");
 	MarkNativeAsOptional("ZL_IsLeaderSlotFree");
+	MarkNativeAsOptional("ZL_IsPossibleLeader");
 }
 #endif
