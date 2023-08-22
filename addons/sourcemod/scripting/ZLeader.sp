@@ -16,7 +16,7 @@
 
 #pragma newdecls required
 
-#define MAXEDICTS (GetMaxEntities() - 100)
+#define MAXEDICTS (GetMaxEntities() - 150)
 #define MAXPOSSIBLELEADERS 64
 #define MK_CROSSHAIR 1
 #define MK_CLIENT 0
@@ -78,8 +78,7 @@ Handle
 	g_hSetClientLeaderForward,
 	g_hRemoveClientLeaderForward;
 
-enum struct LeaderData
-{
+enum struct LeaderData {
 	char L_Codename[48];
 	int L_Slot;
 
@@ -113,13 +112,12 @@ LeaderData g_LeaderData[MAXLEADER];
 
 int TotalLeader;
 
-public Plugin myinfo = 
-{
+public Plugin myinfo = {
 	name = "ZLeader Remake",
 	author = "Original by AntiTeal, nuclear silo, CNTT, colia || Remake by Oylsister, .Rushaway",
 	description = "Allows for a human to be a leader, and give them special functions with it.",
-	version = "3.2",
-	url = ""
+	version = "3.3",
+	url = "https://github.com/oylsister/ZLeader-Remake"
 };
 
 public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max) {
@@ -523,13 +521,13 @@ public void OnClientDisconnect(int client) {
 }
 
 public Action ZR_OnClientInfect(int &client, int &attacker, bool &motherInfect, bool &respawnOverride, bool &respawn) {
-	if (!IsClientLeader(client))
-		return Plugin_Continue;
-	else
+	if (IsClientLeader(client)) {
 		RemoveLeader(client, R_INFECTED, true);
+	}
 
 	return Plugin_Continue;
 }
+
 
 public void OnPlayerTeam(Event event, const char[] name, bool dontBroadcast) {
 	int client = GetClientOfUserId(event.GetInt("userid"));
@@ -598,7 +596,7 @@ public Action Command_Leader(int client, int args) {
 			return Plugin_Stop;
 		}
 
-		if (IsClientAdmin(client) || IsClientVIP(client) || IsPossibleLeader(client)) {
+		if (IsPossibleLeader(client) || IsClientVIP(client)) {
 			if (!IsClientLeader(client)) {
 				if (!IsPlayerAlive(client)) {
 					CReplyToCommand(client, "%t %t", "Prefix", "Target must be alive");
@@ -620,13 +618,33 @@ public Action Command_Leader(int client, int args) {
 				CReplyToCommand(client, "%t %t", "Prefix", "Slot is full");
 				return Plugin_Stop;
 			}
+		} else {
+			CReplyToCommand(client, "%t {red}%t", "Prefix", "Request Access");
+			return Plugin_Handled;
 		}
 	}
 
 	if (args == 1) {
-		char sArg[64];
-		GetCmdArg(1, sArg, sizeof(sArg));
-		int target = FindTarget(client, sArg, false, false);
+		char sArgs[64];
+		GetCmdArg(1, sArgs, sizeof(sArgs));
+		char sTargetName[MAX_TARGET_LENGTH];
+		int iTargets[MAXPLAYERS];
+		int TargetCount;
+		bool TnIsMl;
+
+		if ((TargetCount = ProcessTargetString(sArgs, client, iTargets, MAXPLAYERS,
+			COMMAND_FILTER_CONNECTED | COMMAND_FILTER_ALIVE | COMMAND_FILTER_NO_MULTI | COMMAND_FILTER_NO_IMMUNITY, sTargetName, sizeof(sTargetName), TnIsMl)) <= 0)
+		{
+			/* IF MORE THAN ONE TARGET IN GAME FOUND */
+			ReplyToTargetError(client, TargetCount);
+			return Plugin_Handled;
+		}
+
+		/* IF NO TARGET FOUND */
+		if (TargetCount == -1)
+			return Plugin_Handled;
+
+		int target = iTargets[0];
 
 		if (target != -1) {
 			if (!IsClientAdmin(client)) {
@@ -661,11 +679,14 @@ public Action Command_Leader(int client, int args) {
 
 			CReplyToCommand(client, "%t %t", "Prefix", "Slot is full");
 			return Plugin_Stop;
+		} else {
+			CReplyToCommand(client, "%t %t", "Prefix", "Leader usage");
+			return Plugin_Handled;
 		}
 	}
 
 	if (args > 1) {
-		CReplyToCommand(client, "%T %T", "Prefix", client, "Leader usage", client);
+		CReplyToCommand(client, "%t %t", "Prefix", "Leader usage");
 		return Plugin_Handled;
 	}
 
@@ -673,6 +694,7 @@ public Action Command_Leader(int client, int args) {
 }
 
 public void LeaderMenu(int client) {
+	SetGlobalTransTarget(client);
 	Menu menu = new Menu(LeaderMenuHandler, MENU_ACTIONS_ALL);
 
 	int Defend = g_iClientMarker[MK_DEFEND][client] != -1;
@@ -886,7 +908,7 @@ public int CurrentLeaderMenuHandler(Menu menu, MenuAction action, int param1, in
 ============================================================================ */
 public Action Command_VoteLeader(int client, int args) {
 	if (client <= 0) {
-		ReplyToCommand(client, "%t %t", "Prefix", "This command can only be used in-game.");
+		ReplyToCommand(client, "%T %T", "Prefix", client, "This command can only be used in-game.", client);
 		return Plugin_Handled;
 	}
 	int count = 0;
@@ -911,7 +933,6 @@ public Action Command_VoteLeader(int client, int args) {
 	int iTargets[MAXPLAYERS];
 	int TargetCount;
 	bool TnIsMl;
-	//int target = FindTarget(client, arg, false, false);
 
 	if ((TargetCount = ProcessTargetString(sArgs, client, iTargets, MAXPLAYERS,
 		COMMAND_FILTER_CONNECTED | COMMAND_FILTER_ALIVE | COMMAND_FILTER_NO_MULTI | COMMAND_FILTER_NO_IMMUNITY, sTargetName, sizeof(sTargetName), TnIsMl)) <= 0)
@@ -954,7 +975,7 @@ public Action Command_VoteLeader(int client, int args) {
 	}
 
 	if (IsClientLeader(target)) {
-		CReplyToCommand(client, "%t %t", "Prefix", "Already Leader", target);
+		CReplyToCommand(client, "%T %T", "Prefix", client, "Already Leader", client, target);
 		return Plugin_Handled;
 	}
 
@@ -1004,9 +1025,26 @@ public Action Command_RemoveLeader(int client, int args) {
 		return Plugin_Handled;
 	}
 
-	char arg[64];
-	GetCmdArg(1, arg, sizeof(arg));
-	int target = FindTarget(client, arg, false, false);
+	char sArgs[64];
+	GetCmdArg(1, sArgs, sizeof(sArgs));
+	char sTargetName[MAX_TARGET_LENGTH];
+	int iTargets[MAXPLAYERS];
+	int TargetCount;
+	bool TnIsMl;
+
+	if ((TargetCount = ProcessTargetString(sArgs, client, iTargets, MAXPLAYERS,
+		COMMAND_FILTER_CONNECTED | COMMAND_FILTER_ALIVE | COMMAND_FILTER_NO_MULTI | COMMAND_FILTER_NO_IMMUNITY, sTargetName, sizeof(sTargetName), TnIsMl)) <= 0)
+	{
+		/* IF MORE THAN ONE TARGET IN GAME FOUND */
+		ReplyToTargetError(client, TargetCount);
+		return Plugin_Handled;
+	}
+
+	/* IF NO TARGET FOUND */
+	if (TargetCount == -1)
+		return Plugin_Handled;
+
+	int target = iTargets[0];
 
 	if (target == -1) {
 		CReplyToCommand(client, "%T %T", "Prefix", client, "Invalid client", client);
@@ -1246,7 +1284,7 @@ public int AttachSprite(int client, char[] sprite, int position) {
 		return -1;
 
 	if (GetEdictsCount() > MAXEDICTS) {
-		CPrintToChat(client, "%t Attach Sprite cancelled, too many Edicts. Try again later.", "Prefix");
+		CPrintToChat(client, "%T Attach Sprite cancelled, too many Edicts. Try again later.", "Prefix", client);
 		return -1;
 	}
 
@@ -1435,7 +1473,7 @@ public void RemoveMarker(int client, int type) {
 
 public void SpawnMarker(int client, int type) {
 	if (GetEdictsCount() > MAXEDICTS) {
-		CPrintToChat(client, "%t Marker spawn cancelled, too many Edicts. Try again later.", "Prefix");
+		CPrintToChat(client, "%T Marker spawn cancelled, too many Edicts. Try again later.", "Prefix", client);
 		return;
 	}
 
@@ -2098,15 +2136,15 @@ stock bool IsLeaderSlotFree(int slot) {
 }
 
 stock bool IsClientAdmin(int client) {
-	return CheckCommandAccess(client, "sm_admin", ADMFLAG_BAN);
+	return CheckCommandAccess(client, "sm_ban", ADMFLAG_BAN, true);
 }
 
 stock bool IsPossibleLeader(int client) {
 	for (int i = 0; i <= (MAXPOSSIBLELEADERS - 1); i++) {
-		if (StrEqual(g_sSteamIDs2[client], g_sLeaderAuth[i]))
+		if (IsClientAdmin(client))
 			return true;
 
-		if (IsClientAdmin(i))
+		if (StrEqual(g_sSteamIDs2[client], g_sLeaderAuth[i]))
 			return true;
 	}
 	return false;
