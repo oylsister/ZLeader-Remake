@@ -6,6 +6,12 @@
 		"en"    	"{green}[ZLeader]{default}"
         "ru"    	"{green}[ZLeader]{default}"
 	}
+    
+    "Request Access"
+	{
+		"en"    	"You need to request Leader Access!"
+        "ru"		"Вам необходимо запросить Лидерский Доступ!"
+	}
 
 	"Slot is full"
 	{
@@ -41,7 +47,7 @@
 	"Already vote client"
 	{
 		"en"		"You have already voted for this player!"
-        "ru"		"Вы уже проголосовали за этого игрока!
+        "ru"		"Вы уже проголосовали за этого игрока!"
 	}
 
 	"Already Leader"
