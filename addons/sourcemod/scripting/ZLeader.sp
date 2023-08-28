@@ -116,7 +116,7 @@ public Plugin myinfo = {
 	name = "ZLeader Remake",
 	author = "Original by AntiTeal, nuclear silo, CNTT, colia || Remake by Oylsister, .Rushaway",
 	description = "Allows for a human to be a leader, and give them special functions with it.",
-	version = "3.3",
+	version = "3.3.1",
 	url = "https://github.com/oylsister/ZLeader-Remake"
 };
 
@@ -515,6 +515,8 @@ public void OnClientDisconnect(int client) {
 	g_iClientGetVoted[client] = 0;
 	g_iClientNextVote[client] = 0;
 	g_iClientVoteWhom[client] = -1;
+
+	FormatEx(g_sSteamIDs2[client], sizeof(g_sSteamIDs2[]), "");
 	FormatEx(g_sSteamIDs64[client], sizeof(g_sSteamIDs64[]), "");
 
 	SetClientCookies(client);
@@ -670,6 +672,7 @@ public Action Command_Leader(int client, int args) {
 
 			for (int i = 0; i < TotalLeader; i++) {
 				if (IsLeaderSlotFree(i)) {
+					LogAction(client, target, "[ZLeader] \"%L\" have set leader on \"%L\"", client, target);
 					CReplyToCommand(client, "%t %t", "Prefix", "You set client leader", target);
 					SetClientLeader(target, client, i);
 					LeaderMenu(target);
@@ -835,6 +838,7 @@ public int LeaderMenuHandler(Menu menu, MenuAction action, int param1, int param
 public Action Command_ReloadLeaders(int client, int args) {
 	UpdateLeaders();
 	CReplyToCommand(client, "%T %T", "Prefix", client, "Leader cache refreshed", client);
+	LogAction(client, -1, "[ZLeader] \"%L\" has refreshed Leaders cache.", client);
 	return Plugin_Handled;
 }
 
@@ -1057,6 +1061,7 @@ public Action Command_RemoveLeader(int client, int args) {
 	}
 
 	RemoveLeader(target, R_ADMINFORCED, true);
+	LogAction(client, target, "[ZLeader] Leader \"%L\" has been resigned by \"%L\"", target, client);
 	return Plugin_Handled;
 }
 
@@ -1094,8 +1099,10 @@ public int RemoveLeaderListMenuHandler(Menu menu, MenuAction action, int param1,
 	switch (action) {
 		case MenuAction_Select: {
 			for (int i = 0; i < TotalLeader; i++) {
-				if (param2 == i && !IsLeaderSlotFree(i))
+				if (param2 == i && !IsLeaderSlotFree(i)) {
+					LogAction(param1, g_iCurrentLeader[i], "[ZLeader] Leader \"%L\" has been resigned by \"%L\"", g_iCurrentLeader[i], param1);
 					RemoveLeader(g_iCurrentLeader[i], R_ADMINFORCED, true);
+				}
 			}
 		}
 
