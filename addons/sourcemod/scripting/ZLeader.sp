@@ -17,7 +17,7 @@
 #pragma newdecls required
 
 #define MAXEDICTS (GetMaxEntities() - 150)
-#define MAXPOSSIBLELEADERS 64
+#define MAXPOSSIBLELEADERS 999 // Determine maxium lines number of leaders.ini 
 #define MK_CROSSHAIR 1
 #define MK_CLIENT 0
 #define SP_NONE -1
@@ -32,7 +32,8 @@
 ConVar 
 	g_cvGlowLeader,
 	g_cvNeonLeader,
-	g_cvTrailPosition;
+	g_cvTrailPosition,
+	g_cvEnableVIP;
 
 int
 	g_Serial_Gen = 0,
@@ -65,10 +66,11 @@ bool
 	g_bBeaconActive[MAXPLAYERS + 1] = { false, ... };
 
 char 
-	szColorName[MAXPLAYERS + 1][64],
+	szColorName[MAXPLAYERS + 1][MAX_NAME_LENGTH],
 	szColorChat[MAXPLAYERS + 1][64],
-	g_sLeaderAuth[MAXPOSSIBLELEADERS][64],
-	g_sSteamIDs2[MAXPLAYERS+1][32], g_sSteamIDs64[MAXPLAYERS+1][64];
+	g_sLeaderAuth[MAXPOSSIBLELEADERS][MAX_AUTHID_LENGTH],
+	g_sSteamIDs2[MAXPLAYERS+1][MAX_AUTHID_LENGTH],
+	g_sSteamIDs64[MAXPLAYERS+1][MAX_AUTHID_LENGTH];
 
 float g_pos[3];
 
@@ -116,7 +118,7 @@ public Plugin myinfo = {
 	name = "ZLeader Remake",
 	author = "Original by AntiTeal, nuclear silo, CNTT, colia || Remake by Oylsister, .Rushaway",
 	description = "Allows for a human to be a leader, and give them special functions with it.",
-	version = "3.3.1",
+	version = "3.3.2",
 	url = "https://github.com/oylsister/ZLeader-Remake"
 };
 
@@ -156,6 +158,7 @@ public void OnPluginStart() {
 	g_cvNeonLeader = CreateConVar("sm_zleader_neon", "1", "Put a neon light parented to the leader");
 	g_cvGlowLeader = CreateConVar("sm_zleader_glow", "1", "Put a glow colors effect on the leader");
 	g_cvTrailPosition = CreateConVar("sm_zleader_trail_position", "0.0 0.0 10.0", "The trail position (X Y Z)");
+	g_cvEnableVIP = CreateConVar("sm_zleader_vip", "0", "VIP groups can be leader?", _, true, 0.0, true, 1.0);
 
 	AddCommandListener(HookPlayerChat, "say");
 	AddCommandListener(HookPlayerChatTeam, "say_team");
@@ -598,7 +601,7 @@ public Action Command_Leader(int client, int args) {
 			return Plugin_Stop;
 		}
 
-		if (IsPossibleLeader(client) || IsClientVIP(client)) {
+		if (IsPossibleLeader(client)) {
 			if (!IsClientLeader(client)) {
 				if (!IsPlayerAlive(client)) {
 					CReplyToCommand(client, "%t %t", "Prefix", "Target must be alive");
@@ -2037,6 +2040,9 @@ public Action ResetMarkerButtonPressed(Handle timer, any client) {
 ||  VIP
 ============================================================================ */
 stock bool IsClientVIP(int client) {
+	if (!g_cvEnableVIP.BoolValue)
+		return false;
+
 	if (!vipcore)
 		return false;
 
@@ -2151,6 +2157,9 @@ stock bool IsPossibleLeader(int client) {
 		if (IsClientAdmin(client))
 			return true;
 
+		if (IsClientVIP(client))
+			return true;
+
 		if (StrEqual(g_sSteamIDs2[client], g_sLeaderAuth[i]))
 			return true;
 	}
@@ -2213,7 +2222,7 @@ stock void UpdateLeaders() {
 	char g_sDataFile[PLATFORM_MAX_PATH];
 	BuildPath(Path_SM, g_sDataFile, sizeof(g_sDataFile), "configs/zleader/leaders.ini");
 	for (int i = 0; i <= (MAXPOSSIBLELEADERS - 1); i++)
-		g_sLeaderAuth[i] = "";
+		g_sLeaderAuth[i] = "\0";
 
 	File fFile = OpenFile(g_sDataFile, "rt");
 	if (!fFile) {
@@ -2221,11 +2230,11 @@ stock void UpdateLeaders() {
 		return;
 	}
 
-	char sAuth[64];
+	char sAuth[MAX_AUTHID_LENGTH];
 	int iIndex = 0;
 
 	while (!fFile.EndOfFile()) {
-		char line[255];
+		char line[512];
 		if (!fFile.ReadLine(line, sizeof(line)))
 			break;
 
