@@ -118,7 +118,7 @@ public Plugin myinfo = {
 	name = "ZLeader Remake",
 	author = "Original by AntiTeal, nuclear silo, CNTT, colia || Remake by Oylsister, .Rushaway",
 	description = "Allows for a human to be a leader, and give them special functions with it.",
-	version = "3.3.2",
+	version = "3.3.3",
 	url = "https://github.com/oylsister/ZLeader-Remake"
 };
 
@@ -333,17 +333,17 @@ public void OnAllPluginsLoaded() {
 	g_ccc = LibraryExists("ccc");
 }
 public void OnLibraryRemoved(const char[] name) {
-	if (StrEqual(name, "vip_core"))
+	if (strcmp(name, "vip_core", false) == 0)
 		vipcore = false;
 
-	if (StrEqual(name, "ccc"))
+	if (strcmp(name, "ccc", false) == 0)
 		g_ccc = false;
 }
 public void OnLibraryAdded(const char[] name) {
-	if (StrEqual(name, "vip_core"))
+	if (strcmp(name, "vip_core", false) == 0)
 		vipcore = true;
 
-	if (StrEqual(name, "ccc"))
+	if (strcmp(name, "ccc", false) == 0)
 		g_ccc = true;
 }
 
@@ -452,14 +452,14 @@ public int ZLeaderSettingHandler(Menu menu, MenuAction action, int param1, int p
 			char info[64];
 			char display[64];
 			menu.GetItem(param2, info, sizeof(info));
-			if (StrEqual(info, "shortcut")) {
+			if (strcmp(info, "shortcut", false) == 0) {
 				if (g_bShorcut[param1])
 					Format(display, sizeof(display), "%T : %T", "Shortcut", param1, "Enabled", param1);
 				else
 					Format(display, sizeof(display), "%T : %T", "Shortcut", param1, "Disabled", param1);
 
 				return RedrawMenuItem(display);
-			} else if (StrEqual(info, "markerpos")) {
+			} else if (strcmp(info, "markerpos", false) == 0) {
 				char thepos[32];
 
 				if (g_iMarkerPos[param1] == MK_CLIENT)
@@ -474,7 +474,7 @@ public int ZLeaderSettingHandler(Menu menu, MenuAction action, int param1, int p
 		case MenuAction_Select: {
 			char info[64];
 			menu.GetItem(param2, info, sizeof(info));
-			if (StrEqual(info, "shortcut")) {
+			if (strcmp(info, "shortcut", false) == 0) {
 				char status[32];
 				g_bShorcut[param1] = !g_bShorcut[param1];
 
@@ -484,7 +484,7 @@ public int ZLeaderSettingHandler(Menu menu, MenuAction action, int param1, int p
 					Format(status, 64, "%T", "Disabled Chat", param1);
 
 				CPrintToChat(param1, "%T %T", "Prefix", param1, "You set shortcut", param1, status);
-			} else if (StrEqual(info, "markerpos")) {
+			} else if (strcmp(info, "markerpos", false) == 0) {
 				if (g_iMarkerPos[param1] == MK_CLIENT) {
 					g_iMarkerPos[param1] = MK_CROSSHAIR;
 					CPrintToChat(param1, "%T %T", "Prefix", param1, "Marker Pos Crosshair", param1);
@@ -770,19 +770,19 @@ public int LeaderMenuHandler(Menu menu, MenuAction action, int param1, int param
 				char info[64];
 				menu.GetItem(param2, info, sizeof(info));
 
-				if (StrEqual(info, "follow", false)) {
+				if (strcmp(info, "follow", false) == 0) {
 					char display[128];
 					if (g_iClientSprite[param1] == SP_FOLLOW) {
 						Format(display, sizeof(display), "%T (✘)", "Follow Me", param1);
 						return RedrawMenuItem(display);
 					}
-				} else if (StrEqual(info, "trail", false)) {
+				} else if (strcmp(info, "trail", false) == 0) {
 					char display[128];
 					if (g_bTrailActive[param1]) {
 						Format(display, sizeof(display), "%T (✘)", "Toggle Trail", param1);
 						return RedrawMenuItem(display);
 					}
-				} else if (StrEqual(info, "beacon", false)) {
+				} else if (strcmp(info, "beacon", false) == 0) {
 					char display[128];
 					if (g_bBeaconActive[param1]) {
 						Format(display, sizeof(display), "%T (✘)", "Toggle Beacon", param1);
@@ -796,7 +796,7 @@ public int LeaderMenuHandler(Menu menu, MenuAction action, int param1, int param
 				menu.GetItem(param2, info, sizeof(info));
 
 				if (!ZR_IsClientZombie(param1)) {
-					if (StrEqual(info, "follow", false)) {
+					if (strcmp(info, "follow", false) == 0) {
 						if (g_iClientSprite[param1] != SP_FOLLOW) {
 							RemoveSpriteFollow(param1);
 							g_iClientSprite[param1] = SP_FOLLOW;
@@ -809,20 +809,20 @@ public int LeaderMenuHandler(Menu menu, MenuAction action, int param1, int param
 						}
 
 						LeaderMenu(param1);
-					} else if (StrEqual(info, "trail", false)) {
+					} else if (strcmp(info, "trail", false) == 0) {
 						ToggleTrail(param1);
 						LeaderMenu(param1);
-					} else if (StrEqual(info, "beacon", false)) {
+					} else if (strcmp(info, "beacon", false) == 0) {
 						ToggleBeacon(param1);
 						LeaderMenu(param1);
-					} else if (StrEqual(info, "marker", false)) {
+					} else if (strcmp(info, "marker", false) == 0) {
 						MarkerMenu(param1);
-					} else if (StrEqual(info, "removemarker", false)) {
+					} else if (strcmp(info, "removemarker", false) == 0) {
 						for (int i = 0; i < 4; i++)
 							RemoveMarker(param1, i);
 
 						LeaderMenu(param1);
-					} else if (StrEqual(info, "resign", false)) {
+					} else if (strcmp(info, "resign", false) == 0) {
 						ResignConfirmMenu(param1);
 					}
 				}
@@ -1378,22 +1378,22 @@ public int MarkerMenuHandler(Menu menu, MenuAction action, int param1, int param
 				char display[64];
 				menu.GetItem(param2, info, sizeof(info));
 
-				if (StrEqual(info, "normal")) {
+				if (strcmp(info, "normal", false) == 0) {
 					if (g_iClientMarker[MK_NORMAL][param1] != -1) {
 						Format(display, sizeof(display), "%T (✘)", "Arrow Marker", param1);
 						return RedrawMenuItem(display);
 					}
-				} else if (StrEqual(info, "defend")) {
+				} else if (strcmp(info, "defend", false) == 0) {
 					if (g_iClientMarker[MK_DEFEND][param1] != -1) {
 						Format(display, sizeof(display), "%T (✘)", "Defend Here", param1);
 						return RedrawMenuItem(display);
 					}
-				} else if (StrEqual(info, "zmtp")) {
+				} else if (strcmp(info, "zmtp", false) == 0) {
 					if (g_iClientMarker[MK_ZMTP][param1] != -1) {
 						Format(display, sizeof(display), "%T (✘)", "ZM Teleport", param1);
 						return RedrawMenuItem(display);
 					}
-				} else if (StrEqual(info, "nohug")) {
+				} else if (strcmp(info, "nohug", false) == 0) {
 					if (g_iClientMarker[MK_NOHUG][param1] != -1) {
 						Format(display, sizeof(display), "%T (✘)", "No Doorhug", param1);
 						return RedrawMenuItem(display);
@@ -1405,27 +1405,27 @@ public int MarkerMenuHandler(Menu menu, MenuAction action, int param1, int param
 				char info[64];
 				menu.GetItem(param2, info, sizeof(info));
 
-				if (StrEqual(info, "normal")) {
+				if (strcmp(info, "normal", false) == 0) {
 					if (g_iClientMarker[MK_NORMAL][param1] != -1)
 						RemoveMarker(param1, MK_NORMAL);
 					else
 						SpawnMarker(param1, MK_NORMAL);
-				} else if (StrEqual(info, "defend")) {
+				} else if (strcmp(info, "defend", false) == 0) {
 					if (g_iClientMarker[MK_DEFEND][param1] != -1)
 						RemoveMarker(param1, MK_DEFEND);
 					else
 						SpawnMarker(param1, MK_DEFEND);
-				} else if (StrEqual(info, "zmtp")) {
+				} else if (strcmp(info, "zmtp", false) == 0) {
 					if (g_iClientMarker[MK_ZMTP][param1] != -1)
 						RemoveMarker(param1, MK_ZMTP);
 					else
 						SpawnMarker(param1, MK_ZMTP);
-				} else if (StrEqual(info, "nohug")) {
+				} else if (strcmp(info, "nohug", false) == 0) {
 					if (g_iClientMarker[MK_NOHUG][param1] != -1)
 						RemoveMarker(param1, MK_NOHUG);
 					else
 						SpawnMarker(param1, MK_NOHUG);
-				} else if (StrEqual(info, "removemarker")) {
+				} else if (strcmp(info, "removemarker", false) == 0) {
 					for (int i = 0; i < 4; i++)
 						RemoveMarker(param1, i);
 				}
@@ -1794,28 +1794,29 @@ void HookRadio() {
 
 public Action Radio(int client, const char[] command, int argc) {
 	if (IsClientLeader(client)) {
-		if (StrEqual(command, "compliment")) PrintRadio(client, "Nice!");
-		if (StrEqual(command, "coverme")) PrintRadio(client, "Cover Me!");
-		if (StrEqual(command, "cheer")) PrintRadio(client, "Cheer!");
-		if (StrEqual(command, "takepoint")) PrintRadio(client, "You take the point.");
-		if (StrEqual(command, "holdpos")) PrintRadio(client, "Hold This Position.");
-		if (StrEqual(command, "regroup")) PrintRadio(client, "Regroup Team.");
-		if (StrEqual(command, "followme")) PrintRadio(client, "Follow me.");
-		if (StrEqual(command, "takingfire")) PrintRadio(client, "Taking fire... need assistance!");
-		if (StrEqual(command, "thanks"))  PrintRadio(client, "Thanks!");
-		if (StrEqual(command, "go"))  PrintRadio(client, "Go go go!");
-		if (StrEqual(command, "fallback"))  PrintRadio(client, "Team, fall back!");
-		if (StrEqual(command, "sticktog"))  PrintRadio(client, "Stick together, team.");
-		if (StrEqual(command, "report"))  PrintRadio(client, "Report in, team.");
-		if (StrEqual(command, "roger"))  PrintRadio(client, "Roger that.");
-		if (StrEqual(command, "enemyspot"))  PrintRadio(client, "Enemy spotted.");
-		if (StrEqual(command, "needbackup"))  PrintRadio(client, "Need backup.");
-		if (StrEqual(command, "sectorclear"))  PrintRadio(client, "Sector clear.");
-		if (StrEqual(command, "inposition"))  PrintRadio(client, "I'm in position.");
-		if (StrEqual(command, "reportingin"))  PrintRadio(client, "Reporting In.");
-		if (StrEqual(command, "getout"))  PrintRadio(client, "Get out of there, it's gonna blow!.");
-		if (StrEqual(command, "negative"))  PrintRadio(client, "Negative.");
-		if (StrEqual(command, "enemydown"))  PrintRadio(client, "Enemy down.");
+		if (strcmp(command, "compliment", false) == 0) PrintRadio(client, "Nice!");
+		if (strcmp(command, "coverme", false) == 0) PrintRadio(client, "Cover Me!");
+		if (strcmp(command, "cheer", false) == 0) PrintRadio(client, "Cheer!");
+		if (strcmp(command, "takepoint", false) == 0) PrintRadio(client, "You take the point.");
+		if (strcmp(command, "holdpos", false) == 0) PrintRadio(client, "Hold This Position.");
+		if (strcmp(command, "regroup", false) == 0) PrintRadio(client, "Regroup Team.");
+		if (strcmp(command, "followme", false) == 0) PrintRadio(client, "Follow me.");
+		if (strcmp(command, "takingfire", false) == 0) PrintRadio(client, "Taking fire... need assistance!"); 
+		if (strcmp(command, "thanks", false) == 0) PrintRadio(client, "Thanks!"); 
+		if (strcmp(command, "go", false) == 0) PrintRadio(client, "Go go go!");
+		if (strcmp(command, "fallback", false) == 0) PrintRadio(client, "Team, fall back!");
+		if (strcmp(command, "sticktog", false) == 0) PrintRadio(client, "Stick together, team.");
+		if (strcmp(command, "report", false) == 0) PrintRadio(client, "Report in, team.");
+		if (strcmp(command, "roger", false) == 0) PrintRadio(client, "Roger that."); 
+		if (strcmp(command, "enemyspot", false) == 0) PrintRadio(client, "Enemy spotted.");
+		if (strcmp(command, "needbackup", false) == 0) PrintRadio(client, "Need backup.");
+		if (strcmp(command, "sectorclear", false) == 0) PrintRadio(client, "Sector clear.");
+		if (strcmp(command, "inposition", false) == 0) PrintRadio(client, "I'm in position.");
+		if (strcmp(command, "reportingin", false) == 0) PrintRadio(client, "Reporting In.");
+		if (strcmp(command, "getout", false) == 0) PrintRadio(client, "Get out of there, it's gonna blow!.");
+		if (strcmp(command, "negative", false) == 0) PrintRadio(client, "Negative.");
+		if (strcmp(command, "enemydown", false) == 0) PrintRadio(client, "Enemy down.");
+		
 		return Plugin_Stop;
 	}
 	return Plugin_Continue;
@@ -2052,7 +2053,7 @@ stock bool IsClientVIP(int client) {
 	if (!vip)
 		return false;
 
-	if (StrEqual(group, "Mapper") || StrEqual(group, "Retired Staff") || StrEqual(group, "Event Winner"))
+	if ((strcmp(group, "Mapper", false) == 0) || (strcmp(group, "Retired Staff", false) == 0) || (strcmp(group, "Event Winner", false) == 0))
 		return true;
 	else
 		return false;
@@ -2160,7 +2161,7 @@ stock bool IsPossibleLeader(int client) {
 		if (IsClientVIP(client))
 			return true;
 
-		if (StrEqual(g_sSteamIDs2[client], g_sLeaderAuth[i]))
+		if (strcmp(g_sSteamIDs2[client], g_sLeaderAuth[i], false) == 0)
 			return true;
 	}
 	return false;
@@ -2355,10 +2356,10 @@ public int ResignConfirmMenuHandler(Menu menu, MenuAction action, int param1, in
 				char display[64];
 				menu.GetItem(param2, info, sizeof(info));
 
-				if (StrEqual(info, "canceled")) {
+				if (strcmp(info, "canceled", false) == 0) {
 					Format(display, sizeof(display), "%T", "No", param1);
 					return RedrawMenuItem(display);
-				} else if (StrEqual(info, "confirmed")) {
+				} else if (strcmp(info, "confirmed", false) == 0) {
 					Format(display, sizeof(display), "%T", "Yes", param1);
 					return RedrawMenuItem(display);
 				}
@@ -2367,9 +2368,9 @@ public int ResignConfirmMenuHandler(Menu menu, MenuAction action, int param1, in
 				char info[64];
 				menu.GetItem(param2, info, sizeof(info));
 
-				if (StrEqual(info, "confirmed")) {
+				if (strcmp(info, "confirmed", false) == 0) {
 					RemoveLeader(param1, R_SELFRESIGN, true);
-				} else if (StrEqual(info, "canceled")) {
+				} else if (strcmp(info, "canceled", false) == 0) {
 					LeaderMenu(param1);
 				}
 			}
