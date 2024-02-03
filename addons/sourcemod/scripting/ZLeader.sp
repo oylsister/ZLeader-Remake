@@ -11,59 +11,54 @@
 #include "utilshelper.inc"
 
 #undef REQUIRE_PLUGIN
-#include <vip_core>
-#include <ccc>
+#tryinclude <vip_core>
+#tryinclude <ccc>
+#define REQUIRE_PLUGIN
 
 #pragma newdecls required
-
-#define MAXEDICTS (GetMaxEntities() - 150)
-#define MAXPOSSIBLELEADERS 999 // Determine maxium lines number of leaders.ini 
-#define MK_CROSSHAIR 1
-#define MK_CLIENT 0
-#define SP_NONE -1
-#define SP_FOLLOW 0
-
-#define MK_NONE -1
-#define MK_NORMAL 0
-#define MK_DEFEND 1
-#define MK_ZMTP 2
-#define MK_NOHUG 3
 
 ConVar 
 	g_cvGlowLeader,
 	g_cvNeonLeader,
 	g_cvTrailPosition,
-	g_cvEnableVIP;
+	g_cvEnableVIP,
+	g_cvCooldown;
 
 int
-	g_Serial_Gen = 0,
+	g_Serial_Beacon = 0,
+	g_Serial_Ping = 0,
 	g_BeamSprite = -1,
 	g_HaloSprite = -1,
 	g_iMarkerPos[MAXPLAYERS + 1],
 	g_iSpriteFollow[MAXPLAYERS + 1],
 	g_iSpriteLeader[MAXPLAYERS + 1],
-	g_iNeonEntities[4][MAXPLAYERS + 1],
-	g_iMarkerEntities[4][MAXPLAYERS + 1],
-	g_iGlowColor[MAXPLAYERS + 1][3],
+	g_iNeonEntities[MK_TOTAL][MAXPLAYERS + 1],
+	g_iMarkerEntities[MK_TOTAL][MAXPLAYERS + 1],
 	g_iClientGetVoted[MAXPLAYERS + 1],
 	g_iClientVoteWhom[MAXPLAYERS + 1],
-	g_iClientMarker[4][MAXPLAYERS + 1],
+	g_iClientMarker[MK_TOTAL][MAXPLAYERS + 1],
 	g_iClientLeaderSlot[MAXPLAYERS + 1],
 	g_TrailModel[MAXPLAYERS + 1] = { 0, ... },
 	g_BeaconSerial[MAXPLAYERS + 1] = {0, ... },
+	g_PingSerial[MAXPLAYERS + 1] = {0, ... },
 	g_iClientSprite[MAXPLAYERS + 1] = {-1, ...},
 	g_iClientNextVote[MAXPLAYERS + 1] = { -1, ... },
 	g_iButtonLeaderCount[MAXPLAYERS + 1] = {0, ... },
 	g_iButtonMarkerCount[MAXPLAYERS + 1] = {0, ... },
-	g_iCurrentLeader[MAXLEADER] = {-1, -1, -1, -1, -1};
+	g_iButtonPingCount[MAXPLAYERS + 1] = {0, ... },
+	g_iCooldownBeamPing[MAXPLAYERS + 1] = {0, ... },
+	g_iCurrentLeader[MAXLEADER] = {-1, -1, -1};
 
 bool
-	g_ccc,
-	vipcore,
+	g_bPlugin_ccc,
+	g_bPlugin_vipcore,
 	g_bShorcut[MAXPLAYERS + 1],
+	g_bPingSound[MAXPLAYERS + 1],
 	g_bClientLeader[MAXPLAYERS + 1],
 	g_bTrailActive[MAXPLAYERS + 1] = { false, ... },
-	g_bBeaconActive[MAXPLAYERS + 1] = { false, ... };
+	g_bBeaconActive[MAXPLAYERS + 1] = { false, ... },
+	g_bPingBeamActive[MAXPLAYERS + 1] = { false, ... },
+	g_bSuicideSpectate[MAXPLAYERS + 1] = { false, ... };
 
 char 
 	szColorName[MAXPLAYERS + 1][MAX_NAME_LENGTH],
@@ -76,9 +71,10 @@ float g_pos[3];
 
 Handle 
 	g_hShortcut = INVALID_HANDLE,
+	g_hPingSound = INVALID_HANDLE,
 	g_hMarkerPos = INVALID_HANDLE,
-	g_hSetClientLeaderForward,
-	g_hRemoveClientLeaderForward;
+	g_hSetClientLeaderForward = INVALID_HANDLE,
+	g_hRemoveClientLeaderForward = INVALID_HANDLE;
 
 enum struct LeaderData {
 	char L_Codename[48];
@@ -108,6 +104,11 @@ enum struct LeaderData {
 	char L_MarkerDefend_VMT[PLATFORM_MAX_PATH];
 	char L_MarkerDefend_VTF[PLATFORM_MAX_PATH];
 	int L_iColorDefend[4];
+
+	char L_MarkerPing_VMT[PLATFORM_MAX_PATH];
+	char L_MarkerPing_VTF[PLATFORM_MAX_PATH];
+	int L_iColorPing[4]; 
+	char L_MarkerPing_Sound[PLATFORM_MAX_PATH];
 }
 
 LeaderData g_LeaderData[MAXLEADER];
@@ -118,7 +119,7 @@ public Plugin myinfo = {
 	name = "ZLeader Remake",
 	author = "Original by AntiTeal, nuclear silo, CNTT, colia || Remake by Oylsister, .Rushaway",
 	description = "Allows for a human to be a leader, and give them special functions with it.",
-	version = "3.3.3",
+	version = "3.4",
 	url = "https://github.com/oylsister/ZLeader-Remake"
 };
 
@@ -150,6 +151,14 @@ public void OnPluginStart() {
 	RegConsoleCmd("sm_leaders", Command_PossibleLeaders, "Print all possible leaders");
 	RegConsoleCmd("sm_currentleader", Command_CurrentLeader, "Print all active leaders");
 
+	/* MARKER COMMANDS TO CREATE BINDS */
+	RegConsoleCmd("sm_arrow", Command_Arrow, "Arrow a location");
+	RegConsoleCmd("sm_defend", Command_Defend, "Defend a location");
+	RegConsoleCmd("sm_zmtp", Command_ZMTP, "ZM Teleport a location");
+	RegConsoleCmd("sm_nodoorhug", Command_NoDoorHug, "No Doorhug a location");
+	RegConsoleCmd("sm_ping", Command_Ping, "Ping a location");
+	RegConsoleCmd("sm_removemarker", Command_RemoveMarkers, "Remove all markers");
+
 	/* ADMINS COMMANDS */
 	RegAdminCmd("sm_removeleader", Command_RemoveLeader, ADMFLAG_KICK, "Revome a current leader");
 	RegAdminCmd("sm_reloadleaders", Command_ReloadLeaders, ADMFLAG_BAN, "Reload access for leader.ini");
@@ -159,6 +168,7 @@ public void OnPluginStart() {
 	g_cvGlowLeader = CreateConVar("sm_zleader_glow", "1", "Put a glow colors effect on the leader");
 	g_cvTrailPosition = CreateConVar("sm_zleader_trail_position", "0.0 0.0 10.0", "The trail position (X Y Z)");
 	g_cvEnableVIP = CreateConVar("sm_zleader_vip", "0", "VIP groups can be leader?", _, true, 0.0, true, 1.0);
+	g_cvCooldown = CreateConVar("sm_zleader_cooldown", "4", "Cooldown in seconds for ping beam");
 
 	AddCommandListener(HookPlayerChat, "say");
 	AddCommandListener(HookPlayerChatTeam, "say_team");
@@ -167,8 +177,8 @@ public void OnPluginStart() {
 
 	/* HOOK EVENTS & RADIO */
 	AddTempEntHook("Player Decal", HookDecal);
-	HookEvent("player_team", OnPlayerTeam);
-	HookEvent("player_death", OnPlayerDeath);
+	HookEvent("player_team", OnPlayerTeam, EventHookMode_Post);
+	HookEvent("player_death", OnPlayerDeath, EventHookMode_Post);
 	HookEvent("round_end", OnRoundEnd);
 	HookRadio();
 
@@ -176,6 +186,8 @@ public void OnPluginStart() {
 	SetCookieMenuItem(ZLeaderCookieHandler, 0, "ZLeader Settings");
 	g_hMarkerPos = RegClientCookie("zleader_makerpos", "ZLeader Marker Position", CookieAccess_Protected);
 	g_hShortcut = RegClientCookie("zleader_shortcut", "ZLeader ShortCut", CookieAccess_Protected);
+	g_hPingSound = RegClientCookie("zleader_pingsound", "ZLeader Ping Sound", CookieAccess_Protected);
+
 
 	/* ADD FILTERS */
 	AddMultiTargetFilter("@leaders", Filter_Leaders, "Possible Leaders", false);
@@ -243,6 +255,11 @@ void LoadConfig() {
 			KvGetString(kv, "nodoorhug_vmt", g_LeaderData[TotalLeader].L_MarkerNOHUG_VMT, PLATFORM_MAX_PATH);
 			KvGetString(kv, "nodoorhug_vtf", g_LeaderData[TotalLeader].L_MarkerNOHUG_VTF, PLATFORM_MAX_PATH);
 			KvGetColor(kv, "nodoorhug_color", g_LeaderData[TotalLeader].L_iColorNOHUG[0], g_LeaderData[TotalLeader].L_iColorNOHUG[1], g_LeaderData[TotalLeader].L_iColorNOHUG[2], g_LeaderData[TotalLeader].L_iColorNOHUG[3]);
+
+			KvGetString(kv, "ping_vmt", g_LeaderData[TotalLeader].L_MarkerPing_VMT, PLATFORM_MAX_PATH);
+			KvGetString(kv, "ping_vtf", g_LeaderData[TotalLeader].L_MarkerPing_VTF, PLATFORM_MAX_PATH);
+			KvGetColor(kv, "ping_color", g_LeaderData[TotalLeader].L_iColorPing[0], g_LeaderData[TotalLeader].L_iColorPing[1], g_LeaderData[TotalLeader].L_iColorPing[2], g_LeaderData[TotalLeader].L_iColorPing[3]);
+			KvGetString(kv, "ping_sound", g_LeaderData[TotalLeader].L_MarkerPing_Sound, PLATFORM_MAX_PATH);
 			
 			TotalLeader++;
 		}
@@ -255,6 +272,11 @@ void LoadConfig() {
 void LoadDownloadTable() {
 	char spath[PLATFORM_MAX_PATH];
 	BuildPath(Path_SM, spath, sizeof(spath), "configs/zleader/downloads.txt");
+
+	if (!FileExists(spath)) {
+		SetFailState("Couldn't find config file: %s", spath);
+		return;
+	}
 
 	File file = OpenFile(spath, "r");
 
@@ -312,39 +334,56 @@ void PrecacheConfig() {
 
 		if (g_LeaderData[i].L_MarkerDefend_VMT[0] != '\0')
 			PrecacheGeneric(g_LeaderData[i].L_MarkerDefend_VMT, true);
+
+		if (g_LeaderData[i].L_MarkerPing_VMT[0] != '\0')
+			PrecacheGeneric(g_LeaderData[i].L_MarkerPing_VMT, true);
+
+		if (g_LeaderData[i].L_MarkerPing_Sound[0] != '\0')
+			PrecacheSound(g_LeaderData[i].L_MarkerPing_Sound, true);
 	}
 }
 
 /* =========================================================================
-||  REMOVE ALL FILTERS
+||  REMOVE ALL FILTERS / COMMAND LISTENER / CLOSE ALL HANDLES
 ============================================================================ */
 public void OnPluginEnd() {
 	RemoveMultiTargetFilter("@leaders", Filter_Leaders);
 	RemoveMultiTargetFilter("@!leaders", Filter_NotLeaders);
 	RemoveMultiTargetFilter("@leader", Filter_Leader);
 	RemoveMultiTargetFilter("@!leader", Filter_NotLeader);
+
+	RemoveCommandListener(HookPlayerChat, "say");
+	RemoveCommandListener(HookPlayerChatTeam, "say_team");
+	RemoveCommandListener(QuickLeaderMenuCommand, "+lookatweapon");
+	RemoveCommandListener(QuickMarkerMenuCommand, "-lookatweapon");
+
+	CloseHandle(g_hShortcut);
+	CloseHandle(g_hPingSound);
+	CloseHandle(g_hMarkerPos);
+	CloseHandle(g_hSetClientLeaderForward);
+	CloseHandle(g_hRemoveClientLeaderForward);
 }
 
 /* =========================================================================
 ||  EXTERNAL PLUGINS
 ============================================================================ */
 public void OnAllPluginsLoaded() {
-	vipcore = LibraryExists("vip_core");
-	g_ccc = LibraryExists("ccc");
+	g_bPlugin_vipcore = LibraryExists("vip_core");
+	g_bPlugin_ccc = LibraryExists("ccc");
 }
 public void OnLibraryRemoved(const char[] name) {
 	if (strcmp(name, "vip_core", false) == 0)
-		vipcore = false;
+		g_bPlugin_vipcore = false;
 
 	if (strcmp(name, "ccc", false) == 0)
-		g_ccc = false;
+		g_bPlugin_ccc = false;
 }
 public void OnLibraryAdded(const char[] name) {
 	if (strcmp(name, "vip_core", false) == 0)
-		vipcore = true;
+		g_bPlugin_vipcore = true;
 
 	if (strcmp(name, "ccc", false) == 0)
-		g_ccc = true;
+		g_bPlugin_ccc = true;
 }
 
 /* =========================================================================
@@ -374,11 +413,7 @@ public void OnMapStart() {
 ||  CLIENT CONNECTING (Index, Cookie, ..)
 ============================================================================ */
 public void OnClientPutInServer(int client) {
-	g_bClientLeader[client] = false;
-	g_iClientLeaderSlot[client] = -1;
-	g_iClientGetVoted[client] = 0;
-	g_iClientNextVote[client] = 0;
-	g_iClientVoteWhom[client] = -1;
+	Reset_PlayerState(client);
 
 	if (AreClientCookiesCached(client))
 		ReadClientCookies(client);
@@ -399,25 +434,22 @@ public void OnClientCookiesCached(int client) {
 public void ReadClientCookies(int client) {
 	char buffer[32];
 	GetClientCookie(client, g_hShortcut, buffer, 32);
-	if (buffer[0] != '\0')
-		g_bShorcut[client] = view_as<bool>(StringToInt(buffer));
-	else
-		g_bShorcut[client] = true;
+	g_bShorcut[client] = view_as<bool>(StringToInt(buffer)) || buffer[0] == '\0';
+
+	GetClientCookie(client, g_hPingSound, buffer, 32);
+	g_bPingSound[client] = view_as<bool>(StringToInt(buffer)) || buffer[0] == '\0';
 
 	GetClientCookie(client, g_hMarkerPos, buffer, 32);
-	if (buffer[0] != '\0')
-		g_iMarkerPos[client] = StringToInt(buffer);
-	else
-		g_iMarkerPos[client] = MK_CROSSHAIR;
+	g_iMarkerPos[client] = (buffer[0] != '\0') ? StringToInt(buffer) : MK_TYPE_CROSSHAIR;
 }
 
 public void SetClientCookies(int client) {
 	char sValue[8];
 
-	Format(sValue, sizeof(sValue), "%i", g_bShorcut[client]);
+	FormatEx(sValue, sizeof(sValue), "%i", g_bShorcut[client]);
 	SetClientCookie(client, g_hShortcut, sValue);
 
-	Format(sValue, sizeof(sValue), "%i", g_iMarkerPos[client]);
+	FormatEx(sValue, sizeof(sValue), "%i", g_iMarkerPos[client]);
 	SetClientCookie(client, g_hMarkerPos, sValue);
 }
 
@@ -435,8 +467,8 @@ public void ZLeaderSetting(int client) {
 	menu.SetTitle("%T %T", "Menu Prefix", client, "Client Setting", client);
 
 	char shortcut[64], markerpos[64];
-	Format(shortcut, 64, "%T", "Shortcut", client);
-	Format(markerpos, 64, "%T", "Marker Pos", client);
+	FormatEx(shortcut, 64, "%T", "Shortcut", client);
+	FormatEx(markerpos, 64, "%T", "Marker Pos", client);
 
 	menu.AddItem("shortcut", shortcut);
 	menu.AddItem("markerpos", markerpos);
@@ -449,25 +481,16 @@ public void ZLeaderSetting(int client) {
 public int ZLeaderSettingHandler(Menu menu, MenuAction action, int param1, int param2) {
 	switch (action) {
 		case MenuAction_DisplayItem: {
-			char info[64];
-			char display[64];
+			char info[64], display[64];
 			menu.GetItem(param2, info, sizeof(info));
 			if (strcmp(info, "shortcut", false) == 0) {
-				if (g_bShorcut[param1])
-					Format(display, sizeof(display), "%T : %T", "Shortcut", param1, "Enabled", param1);
-				else
-					Format(display, sizeof(display), "%T : %T", "Shortcut", param1, "Disabled", param1);
-
+				FormatEx(display, sizeof(display), "%T : %T", "Shortcut", param1, g_bShorcut[param1] ? "Enabled" : "Disabled", param1);
 				return RedrawMenuItem(display);
 			} else if (strcmp(info, "markerpos", false) == 0) {
-				char thepos[32];
 
-				if (g_iMarkerPos[param1] == MK_CLIENT)
-					Format(thepos, sizeof(thepos), "%T", "Client Position", param1);
-				else
-					Format(thepos, sizeof(thepos), "%T", "Client Crosshair", param1);
-
-				Format(display, sizeof(display), "%T : %s", "Marker Pos", param1, thepos);
+				char thepos[64];
+				FormatEx(thepos, sizeof(thepos), "%T", g_iMarkerPos[param1] == MK_TYPE_CLIENT ? "Client Position" : "Client Crosshair", param1);
+				FormatEx(display, sizeof(display), "%T : %s", "Marker Pos", param1, thepos);
 				return RedrawMenuItem(display);
 			}
 		}
@@ -477,21 +500,11 @@ public int ZLeaderSettingHandler(Menu menu, MenuAction action, int param1, int p
 			if (strcmp(info, "shortcut", false) == 0) {
 				char status[32];
 				g_bShorcut[param1] = !g_bShorcut[param1];
-
-				if (g_bShorcut[param1])
-					Format(status, 64, "%T", "Enabled Chat", param1);
-				else
-					Format(status, 64, "%T", "Disabled Chat", param1);
-
+				FormatEx(status, 64, "%T", g_bShorcut[param1] ? "Enabled Chat" : "Disabled Chat", param1);
 				CPrintToChat(param1, "%T %T", "Prefix", param1, "You set shortcut", param1, status);
 			} else if (strcmp(info, "markerpos", false) == 0) {
-				if (g_iMarkerPos[param1] == MK_CLIENT) {
-					g_iMarkerPos[param1] = MK_CROSSHAIR;
-					CPrintToChat(param1, "%T %T", "Prefix", param1, "Marker Pos Crosshair", param1);
-				} else {
-					g_iMarkerPos[param1] = MK_CLIENT;
-					CPrintToChat(param1, "%T %T", "Prefix", param1, "Marker Pos Player Postion", param1);
-				}
+				g_iMarkerPos[param1] = (g_iMarkerPos[param1] == MK_TYPE_CLIENT) ? MK_TYPE_CROSSHAIR : MK_TYPE_CLIENT;
+				CPrintToChat(param1, "%T %T", "Prefix", param1, (g_iMarkerPos[param1] == MK_TYPE_CLIENT) ? "Marker Pos Player Position" : "Marker Pos Crosshair", param1);
 			}
 
 			ZLeaderSetting(param1);
@@ -513,11 +526,7 @@ public void OnClientDisconnect(int client) {
 	if (IsClientLeader(client))
 		RemoveLeader(client, R_DISCONNECTED, true);
 
-	g_bClientLeader[client] = false;
-	g_iClientLeaderSlot[client] = -1;
-	g_iClientGetVoted[client] = 0;
-	g_iClientNextVote[client] = 0;
-	g_iClientVoteWhom[client] = -1;
+	Reset_PlayerState(client);
 
 	FormatEx(g_sSteamIDs2[client], sizeof(g_sSteamIDs2[]), "");
 	FormatEx(g_sSteamIDs64[client], sizeof(g_sSteamIDs64[]), "");
@@ -525,65 +534,65 @@ public void OnClientDisconnect(int client) {
 	SetClientCookies(client);
 }
 
-public Action ZR_OnClientInfect(int &client, int &attacker, bool &motherInfect, bool &respawnOverride, bool &respawn) {
-	if (IsClientLeader(client)) {
-		RemoveLeader(client, R_INFECTED, true);
-	}
-
-	return Plugin_Continue;
-}
-
-
 public void OnPlayerTeam(Event event, const char[] name, bool dontBroadcast) {
 	int client = GetClientOfUserId(event.GetInt("userid"));
-	int team = event.GetInt("team");
-
-	if (team == CS_TEAM_NONE || team == CS_TEAM_SPECTATOR)
-		return;
-
+	// We need to perform OnPlayerTeam after OnPlayerDeath, to check if leader moved to spec
 	if (IsClientLeader(client))
-		RemoveLeader(client, R_SPECTATOR, true);
+		CreateTimer(0.2, Timer_OnTeamChange, client, TIMER_FLAG_NO_MAPCHANGE);
 }
 
 public void OnPlayerDeath(Event event, const char[] name, bool dontBroadcast) {
 	int client = GetClientOfUserId(event.GetInt("userid"));
-
-	if (!IsClientLeader(client))
-		return;
-
-	RemoveLeader(client, R_DIED, true);
+	if (IsClientLeader(client))
+		CreateTimer(0.1, Timer_OnDeath, client, TIMER_FLAG_NO_MAPCHANGE);
 }
 
-public void ZR_OnClientInfected(int client, int attacker, bool motherinfect, bool override, bool respawn)
-{
-	if (!IsClientLeader(client))
-		return;
-
-	char codename[32];
-	int slot = GetClientLeaderSlot(client);
-	GetLeaderCodename(slot, codename, sizeof(codename));
-
-	for(int i = 1; i <= MaxClients; i++)
-	{
-		if (IsClientInGame(i))
-			CPrintToChat(i, "%T %T", "Prefix", i, "Get Infected", i, codename, client);
-	}
+public void ZR_OnClientInfected(int client, int attacker, bool motherinfect, bool override, bool respawn) {
+	if (IsClientLeader(client))
+		RemoveLeader(client, R_INFECTED, true);
 }
 
 public void OnRoundEnd(Event event, const char[] name, bool dontBroadcast) {
 	// We create timer for don't insta remove leader (usefull for API)
-	CreateTimer(0.3, RoundEndClean, INVALID_HANDLE, TIMER_FLAG_NO_MAPCHANGE);
+	CreateTimer(0.3, Timer_RoundEndClean, INVALID_HANDLE, TIMER_FLAG_NO_MAPCHANGE);
 	KillAllBeacons();
+	KillAllPingsBeam();
 }
-public Action RoundEndClean(Handle timer) {
-	for (int i = 1; i <= MaxClients; i++)
-	{
+
+public Action Timer_RoundEndClean(Handle timer) {
+	for (int i = 1; i <= MaxClients; i++) {
 		if (IsValidClient(i))
-			g_iClientNextVote[i] = 0;
+			Reset_ClientNextVote(i);
 		if (IsClientLeader(i))
 			RemoveLeader(i, R_ADMINFORCED, false);
 	}
+
 	return Plugin_Handled;
+}
+
+public Action Timer_OnDeath(Handle timer, int client) {
+	if (!client)
+		return Plugin_Stop;
+
+	if (GetClientTeam(client) <= CS_TEAM_SPECTATOR)
+		g_bSuicideSpectate[client] = true;
+
+	if (IsClientLeader(client) && !g_bSuicideSpectate[client])
+		RemoveLeader(client, R_DIED, true);
+
+	return Plugin_Continue;
+}
+
+public Action Timer_OnTeamChange(Handle timer, int client) {
+	if (!client)
+		return Plugin_Stop;
+
+	if (IsClientLeader(client) && g_bSuicideSpectate[client]) {
+		RemoveLeader(client, R_SPECTATOR, true);
+		g_bSuicideSpectate[client] = false;
+	}
+
+	return Plugin_Continue;
 }
 
 /* =========================================================================
@@ -711,33 +720,33 @@ public void LeaderMenu(int client) {
 	if (Arrow || Defend || NoHug || ZMTP) {
 		char sds[64];
 		if (Arrow)
-			Format(sds, sizeof(sds), "%t", "Arrow Marker");
+			FormatEx(sds, sizeof(sds), "%t", "Arrow Marker");
 		if (Defend)
-			Format(sds, sizeof(sds), "%t", "Defend Here");
+			FormatEx(sds, sizeof(sds), "%t", "Defend Here");
 		if (NoHug)
-			Format(sds, sizeof(sds), "%t", "No Doorhug");
+			FormatEx(sds, sizeof(sds), "%t", "No Doorhug");
 		if (ZMTP)
-			Format(sds, sizeof(sds), "%t", "ZM Teleport");
+			FormatEx(sds, sizeof(sds), "%t", "ZM Teleport");
 		if (Arrow && ZMTP)
-			Format(sds, sizeof(sds), "%t\n→ %t", "Arrow Marker", "ZM Teleport");
+			FormatEx(sds, sizeof(sds), "%t\n→ %t", "Arrow Marker", "ZM Teleport");
 		if (Arrow && Defend) 
-			Format(sds, sizeof(sds), "%t\n→ %t", "Arrow Marker", "Defend Here");
+			FormatEx(sds, sizeof(sds), "%t\n→ %t", "Arrow Marker", "Defend Here");
 		if (Arrow && NoHug) 
-			Format(sds, sizeof(sds), "%t\n→ %t", "Arrow Marker", "No Doorhug");
+			FormatEx(sds, sizeof(sds), "%t\n→ %t", "Arrow Marker", "No Doorhug");
 		if (NoHug && ZMTP)
-			Format(sds, sizeof(sds), "%t\n→ %t", "ZM Teleport", "No Doorhug");
+			FormatEx(sds, sizeof(sds), "%t\n→ %t", "ZM Teleport", "No Doorhug");
 		if (Defend && ZMTP)
-			Format(sds, sizeof(sds), "%t\n→ %t", "Defend Here", "ZM Teleport");
+			FormatEx(sds, sizeof(sds), "%t\n→ %t", "Defend Here", "ZM Teleport");
 		if (NoHug && Defend)
-			Format(sds, sizeof(sds), "%t\n→ %t", "Defend Here", "No Doorhug");
+			FormatEx(sds, sizeof(sds), "%t\n→ %t", "Defend Here", "No Doorhug");
 		if (Arrow && Defend && ZMTP)
-			Format(sds, sizeof(sds), "%t\n→ %t\n→ %t", "Arrow Marker", "Defend Here", "No Doorhug");
+			FormatEx(sds, sizeof(sds), "%t\n→ %t\n→ %t", "Arrow Marker", "Defend Here", "No Doorhug");
 		if (Arrow && NoHug && ZMTP)
-			Format(sds, sizeof(sds), "%t\n→ %t\n→ %t", "Arrow Marker", "ZM Teleport", "No Doorhug");
+			FormatEx(sds, sizeof(sds), "%t\n→ %t\n→ %t", "Arrow Marker", "ZM Teleport", "No Doorhug");
 		if (Defend && ZMTP && NoHug)
-			Format(sds, sizeof(sds), "%t\n→ %t\n→ %t", "Defend Here", "ZM Teleport", "No Doorhug");
+			FormatEx(sds, sizeof(sds), "%t\n→ %t\n→ %t", "Defend Here", "ZM Teleport", "No Doorhug");
 		if (Arrow && Defend && NoHug && ZMTP)
-			Format(sds, sizeof(sds), "%t\n→ %t\n→ %t\n→ %t", "Arrow Marker", "Defend Here", "ZM Teleport", "No Doorhug");
+			FormatEx(sds, sizeof(sds), "%t\n→ %t\n→ %t\n→ %t", "Arrow Marker", "Defend Here", "ZM Teleport", "No Doorhug");
 
 		menu.SetTitle("%T \nActive Marker:\n→ %s", "Menu Leader title", client, sds);
 	} else
@@ -745,12 +754,12 @@ public void LeaderMenu(int client) {
 
 	char follow[64], trail[64], beacon[64], marker[64], removemarker[64], resign[64];
 
-	Format(follow, 64, "%T", "Follow Me", client);
-	Format(trail, 64, "%T", "Toggle Trail", client);
-	Format(beacon, 64, "%T", "Toggle Beacon", client);
-	Format(marker, 64, "%T", "Place Marker", client);
-	Format(removemarker, 64, "%T", "Remove Marker", client);
-	Format(resign, 64, "%T", "Resign from Leader", client);
+	FormatEx(follow, 64, "%T", "Follow Me", client);
+	FormatEx(trail, 64, "%T", "Toggle Trail", client);
+	FormatEx(beacon, 64, "%T", "Toggle Beacon", client);
+	FormatEx(marker, 64, "%T", "Place Marker", client);
+	FormatEx(removemarker, 64, "%T", "Remove Marker", client);
+	FormatEx(resign, 64, "%T", "Resign from Leader", client);
 
 	menu.AddItem("follow", follow);
 	menu.AddItem("trail", trail);
@@ -767,27 +776,18 @@ public int LeaderMenuHandler(Menu menu, MenuAction action, int param1, int param
 	if (IsValidClient(param1) && IsClientLeader(param1)) {
 		switch (action) {
 			case MenuAction_DisplayItem: {
-				char info[64];
+				char info[64], display[128];
 				menu.GetItem(param2, info, sizeof(info));
 
-				if (strcmp(info, "follow", false) == 0) {
-					char display[128];
-					if (g_iClientSprite[param1] == SP_FOLLOW) {
-						Format(display, sizeof(display), "%T (✘)", "Follow Me", param1);
-						return RedrawMenuItem(display);
-					}
-				} else if (strcmp(info, "trail", false) == 0) {
-					char display[128];
-					if (g_bTrailActive[param1]) {
-						Format(display, sizeof(display), "%T (✘)", "Toggle Trail", param1);
-						return RedrawMenuItem(display);
-					}
-				} else if (strcmp(info, "beacon", false) == 0) {
-					char display[128];
-					if (g_bBeaconActive[param1]) {
-						Format(display, sizeof(display), "%T (✘)", "Toggle Beacon", param1);
-						return RedrawMenuItem(display);
-					}
+				if (strcmp(info, "follow", false) == 0 && g_iClientSprite[param1] == SP_FOLLOW) {
+					FormatEx(display, sizeof(display), "%T (✘)", "Follow Me", param1);
+					return RedrawMenuItem(display);
+				} else if (strcmp(info, "trail", false) == 0 && g_bTrailActive[param1]) {
+					FormatEx(display, sizeof(display), "%T (✘)", "Toggle Trail", param1);
+					return RedrawMenuItem(display);
+				} else if (strcmp(info, "beacon", false) == 0 && g_bBeaconActive[param1]) {
+					FormatEx(display, sizeof(display), "%T (✘)", "Toggle Beacon", param1);
+					return RedrawMenuItem(display);
 				}
 			}
 
@@ -805,7 +805,7 @@ public int LeaderMenuHandler(Menu menu, MenuAction action, int param1, int param
 								g_iSpriteFollow[param1] = AttachSprite(param1, g_LeaderData[slot].L_FollowVMT, 1);
 						} else {
 							RemoveSpriteFollow(param1);
-							g_iClientSprite[param1] = SP_NONE;
+							Reset_ClientSprite(param1);
 						}
 
 						LeaderMenu(param1);
@@ -818,9 +818,7 @@ public int LeaderMenuHandler(Menu menu, MenuAction action, int param1, int param
 					} else if (strcmp(info, "marker", false) == 0) {
 						MarkerMenu(param1);
 					} else if (strcmp(info, "removemarker", false) == 0) {
-						for (int i = 0; i < 4; i++)
-							RemoveMarker(param1, i);
-
+						RemoveAllMarkers(param1);
 						LeaderMenu(param1);
 					} else if (strcmp(info, "resign", false) == 0) {
 						ResignConfirmMenu(param1);
@@ -849,8 +847,7 @@ public Action Command_ReloadLeaders(int client, int args) {
 ||  Possible Leader Command
 ============================================================================ */
 public Action Command_PossibleLeaders(int client, int args) {
-	char aBuf[1024];
-	char aBuf2[MAX_NAME_LENGTH];
+	char aBuf[1024], aBuf2[MAX_NAME_LENGTH];
 	for (int i = 1; i <= MaxClients; i++) {
 		if (IsClientInGame(i) && !IsFakeClient(i) && !IsClientSourceTV(i) && IsPossibleLeader(i)) {
 			GetClientName(i, aBuf2, sizeof(aBuf2));
@@ -878,18 +875,16 @@ public Action Command_CurrentLeader(int client, int args) {
 	menu.SetTitle("%T %T", "Menu Prefix", client, "Menu Leader list title", client);
 	CReplyToCommand(client, "%T %T", "Prefix", client, "Current Leaders", client);
 	
+	char codename[32], sLine[128];
 	for (int i = 0; i < TotalLeader; i++) {
-		char codename[32];
-		char sLine[128];
-
 		GetLeaderCodename(i, codename, sizeof(codename));
 
 		if (!IsLeaderSlotFree(i)) {
 			CReplyToCommand(client, "{darkred}[{orange}%s{darkred}] {lightblue}%N", codename, g_iCurrentLeader[i]);
-			Format(sLine, 128, "%s: %N", codename, g_iCurrentLeader[i]);
+			FormatEx(sLine, 128, "%s: %N", codename, g_iCurrentLeader[i]);
 			menu.AddItem(codename, sLine, ITEMDRAW_DISABLED);
 		} else {
-			Format(sLine, 128, "%s: %T", codename, "None", client);
+			FormatEx(sLine, 128, "%s: %T", codename, "None", client);
 			menu.AddItem(codename, sLine, ITEMDRAW_DISABLED);
 		}
 	}
@@ -934,12 +929,10 @@ public Action Command_VoteLeader(int client, int args) {
 		return Plugin_Handled;
 	}
 
-	char sArgs[64];
-	GetCmdArg(1, sArgs, sizeof(sArgs));
-	char sTargetName[MAX_TARGET_LENGTH];
-	int iTargets[MAXPLAYERS];
-	int TargetCount;
 	bool TnIsMl;
+	int iTargets[MAXPLAYERS], TargetCount;
+	char sArgs[64], sTargetName[MAX_TARGET_LENGTH];
+	GetCmdArg(1, sArgs, sizeof(sArgs)); 
 
 	if ((TargetCount = ProcessTargetString(sArgs, client, iTargets, MAXPLAYERS,
 		COMMAND_FILTER_CONNECTED | COMMAND_FILTER_ALIVE | COMMAND_FILTER_NO_MULTI | COMMAND_FILTER_NO_IMMUNITY, sTargetName, sizeof(sTargetName), TnIsMl)) <= 0)
@@ -1032,12 +1025,10 @@ public Action Command_RemoveLeader(int client, int args) {
 		return Plugin_Handled;
 	}
 
-	char sArgs[64];
-	GetCmdArg(1, sArgs, sizeof(sArgs));
-	char sTargetName[MAX_TARGET_LENGTH];
-	int iTargets[MAXPLAYERS];
-	int TargetCount;
 	bool TnIsMl;
+	int iTargets[MAXPLAYERS], TargetCount;
+	char sArgs[64], sTargetName[MAX_TARGET_LENGTH];
+	GetCmdArg(1, sArgs, sizeof(sArgs));
 
 	if ((TargetCount = ProcessTargetString(sArgs, client, iTargets, MAXPLAYERS,
 		COMMAND_FILTER_CONNECTED | COMMAND_FILTER_ALIVE | COMMAND_FILTER_NO_MULTI | COMMAND_FILTER_NO_IMMUNITY, sTargetName, sizeof(sTargetName), TnIsMl)) <= 0)
@@ -1075,7 +1066,7 @@ public void RemoveLeaderList(int client) {
 	Menu menu = new Menu(RemoveLeaderListMenuHandler);
 
 	char title[128];
-	Format(title, sizeof(title), "%t %t \n%t", "Menu Prefix", "Menu Leader list title", "Menu Remove Leader title");
+	FormatEx(title, sizeof(title), "%t %t \n%t", "Menu Prefix", "Menu Leader list title", "Menu Remove Leader title");
 	menu.SetTitle("%s", title);
 	
 	for (int i = 0; i < TotalLeader; i++) {
@@ -1085,10 +1076,10 @@ public void RemoveLeaderList(int client) {
 		GetLeaderCodename(i, codename, sizeof(codename));
 
 		if (!IsLeaderSlotFree(i)) {
-			Format(sLine, 128, "%s: %N", codename, g_iCurrentLeader[i]);
+			FormatEx(sLine, 128, "%s: %N", codename, g_iCurrentLeader[i]);
 			menu.AddItem(codename, sLine);
 		} else {
-			Format(sLine, 128, "%s: %t", codename, "None");
+			FormatEx(sLine, 128, "%s: %t", codename, "None");
 			menu.AddItem(codename, sLine, ITEMDRAW_DISABLED);
 		}
 	}
@@ -1120,11 +1111,7 @@ public int RemoveLeaderListMenuHandler(Menu menu, MenuAction action, int param1,
 ||  Trails
 ============================================================================ */
 stock void ToggleTrail(int client) {
-	if (g_bTrailActive[client])
-		g_bTrailActive[client] = false;
-	else
-		g_bTrailActive[client] = true;
-
+	g_bTrailActive[client] = !g_bTrailActive[client];
 	PerformTrail(client);
 }
 
@@ -1201,8 +1188,8 @@ public void ToggleBeacon(int client) {
 }
 
 public void CreateBeacon(int client) {
-	g_BeaconSerial[client] = ++g_Serial_Gen;
-	CreateTimer(1.0, Timer_Beacon, client | (g_Serial_Gen << 7), TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
+	g_BeaconSerial[client] = ++g_Serial_Beacon;
+	CreateTimer(1.0, Timer_Beacon, client | (g_Serial_Beacon << 7), TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 }
 
 public void KillBeacon(int client) {
@@ -1215,7 +1202,7 @@ public void KillBeacon(int client) {
 public void KillAllBeacons() {
 	for (int i = 1; i <= MaxClients; i++) {
 		if (g_bBeaconActive[i])
-			g_bBeaconActive[i] = false;
+			Reset_ClientBeaconActive(i);
 
 		KillBeacon(i);
 	}
@@ -1237,6 +1224,12 @@ public Action Timer_Beacon(Handle timer, any value) {
 		return Plugin_Stop;
 	}
 
+	int slot = GetLeaderIndexWithLeaderSlot(g_iClientLeaderSlot[client]);
+	if (slot == -1) {
+		KillBeacon(client);
+		return Plugin_Stop;
+	}
+
 	float vec[3];
 	GetClientAbsOrigin(client, vec);
 	vec[2] += 10;
@@ -1247,17 +1240,124 @@ public Action Timer_Beacon(Handle timer, any value) {
 	TE_SendToAll();
 
 	// Second beacon beam
-	int rainbowColor[4];
-	float i = GetGameTime();
-	float Frequency = 2.5;
-	rainbowColor[0] = RoundFloat(Sine(Frequency * i + 0.0) * 127.0 + 128.0);
-	rainbowColor[1] = RoundFloat(Sine(Frequency * i + 2.0943951) * 127.0 + 128.0);
-	rainbowColor[2] = RoundFloat(Sine(Frequency * i + 4.1887902) * 127.0 + 128.0);
-	rainbowColor[3] = 255;
-	TE_SetupBeamRingPoint(vec, 10.0, 375.0, g_BeamSprite, g_HaloSprite, 0, 15, 0.6, 25.0, 0.5, rainbowColor, 10, 0);
+	int iColor[4];
+	iColor[0] = g_LeaderData[slot].L_iColorPing[0];
+	iColor[1] = g_LeaderData[slot].L_iColorPing[1];
+	iColor[2] = g_LeaderData[slot].L_iColorPing[2];
+	iColor[3] = g_LeaderData[slot].L_iColorPing[3];
+	TE_SetupBeamRingPoint(vec, 10.0, 375.0, g_BeamSprite, g_HaloSprite, 0, 15, 0.6, 25.0, 0.5, iColor, 10, 0);
 	TE_SendToAll();
 
-	GetClientEyePosition(client, vec);
+	return Plugin_Continue;
+}
+
+/* =========================================================================
+||  Ping Marker
+============================================================================ */
+public void CreatePing(int client) {
+	int cooldownDiff = GetTime() - g_iCooldownBeamPing[client];
+	if (cooldownDiff < g_cvCooldown.IntValue + 1) {
+		CPrintToChat(client, "%t %t", "Prefix", "Cooldown Ping", g_cvCooldown.IntValue - cooldownDiff);
+		return;
+	}
+
+	g_bPingBeamActive[client] = !g_bPingBeamActive[client];
+	PerformPingBeam(client);
+}
+
+public void KillPingBeam(int client) {
+	g_PingSerial[client] = 0;
+}
+
+public void KillAllPingsBeam() {
+	for (int i = 1; i <= MaxClients; i++) {
+		if (g_bPingBeamActive[i])
+			Reset_ClientPingBeamActive(i);
+
+		KillPingBeam(i);
+	}
+}
+
+public void PerformPingBeam(int client) {
+	if (g_PingSerial[client] == 0)
+		CreatePingBeam(client);
+	else
+		KillPingBeam(client);
+}
+
+stock void KillActivePingBeam(int client) {
+	if (g_iClientMarker[MK_PING][client] != -1) {
+		KillPingBeam(client);
+		RemoveMarker(client, MK_PING);
+	}
+}
+
+public void CreatePingBeam(int client) {
+	if (!IsClientInGame(client) || !IsPlayerAlive(client))
+		return;
+
+	SetGlobalTransTarget(client);
+
+	KillActivePingBeam(client);
+	g_iCooldownBeamPing[client] = GetTime();
+	g_PingSerial[client] = ++g_Serial_Ping;
+
+	SpawnMarker(client, MK_PING);
+	// Allow Ping Beam to don't have CD.
+	float RemovePingMarker = g_cvCooldown.FloatValue;
+	if (RemovePingMarker > 0)
+		CreateTimer(RemovePingMarker, Timer_RemovePingMarker, client);
+	
+	CreateTimer(0.3, Timer_PingBeamRing, client | (g_Serial_Ping << 7), TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
+
+	int slot = GetLeaderIndexWithLeaderSlot(g_iClientLeaderSlot[client]);
+	for (int x = 1; x <= MaxClients; x++) {
+		if (!IsClientInGame(x) || GetClientTeam(x) != 3)
+			continue;
+		EmitSoundToClient(x, g_LeaderData[slot].L_MarkerPing_Sound, client, SNDCHAN_AUTO, _, _, 1.0);
+	}
+}
+
+public Action Timer_RemovePingMarker(Handle timer, any value) {
+	int client = value & 0x7f;
+	KillActivePingBeam(client);
+	return Plugin_Continue;
+}
+
+public Action Timer_PingBeamRing(Handle timer, any value) {
+	int client = value & 0x7f;
+	int serial = value >> 7;
+
+	if (!IsClientInGame(client) || !IsPlayerAlive(client) || g_PingSerial[client] != serial) {
+		KillPingBeam(client);
+		return Plugin_Stop;
+	}
+
+	int slot = GetLeaderIndexWithLeaderSlot(g_iClientLeaderSlot[client]);
+	if (slot == -1) {
+		KillPingBeam(client);
+		return Plugin_Stop;
+	}
+
+	float vec[3];
+	vec[0] = g_pos[0];
+	vec[1] = g_pos[1];
+	vec[2] = g_pos[2];
+
+	// First ping beam ring
+	int greyColor[4] = {128, 128, 128, 255};
+	TE_SetupBeamRingPoint(vec, 10.0, 70.0, g_BeamSprite, g_HaloSprite, 0, 20, 0.5, 12.0, 0.0, greyColor, 10, 0);
+	TE_SendToAll();
+
+	// Second ping beam ring
+	int iColor[4];
+	iColor[0] = g_LeaderData[slot].L_iColorPing[0];
+	iColor[1] = g_LeaderData[slot].L_iColorPing[1];
+	iColor[2] = g_LeaderData[slot].L_iColorPing[2];
+	iColor[3] = g_LeaderData[slot].L_iColorPing[3];
+
+	TE_SetupBeamRingPoint(vec, 10.0, 130.0, g_BeamSprite, g_HaloSprite, 0, 15, 0.6, 25.0, 0.5, iColor, 10, 0);
+	TE_SendToAll();
 
 	return Plugin_Continue;
 }
@@ -1301,7 +1401,7 @@ public int AttachSprite(int client, char[] sprite, int position) {
 	char iTarget[16], sTargetname[64];
 
 	GetEntPropString(client, Prop_Data, "m_iName", sTargetname, sizeof(sTargetname));
-	Format(iTarget, sizeof(iTarget), "Client%d", client);
+	FormatEx(iTarget, sizeof(iTarget), "Client%d", client);
 	DispatchKeyValue(client, "targetname", iTarget);
 
 	float Origin[3];
@@ -1340,8 +1440,49 @@ public int AttachSprite(int client, char[] sprite, int position) {
 public Action Command_Marker(int client, int args) {
 	if (IsClientLeader(client)) {
 		MarkerMenu(client);
-		return Plugin_Handled;
 	}
+
+	return Plugin_Handled;
+}
+
+public Action Command_Arrow(int client, int args) {
+	if (IsClientLeader(client))
+		ToggleMarkerState(client, MK_NORMAL);
+
+	return Plugin_Handled;
+}
+
+public Action Command_Defend(int client, int args) {
+	if (IsClientLeader(client))
+		ToggleMarkerState(client, MK_DEFEND);
+
+	return Plugin_Handled;
+}
+
+public Action Command_ZMTP(int client, int args) {
+	if (IsClientLeader(client))
+		ToggleMarkerState(client, MK_ZMTP);
+
+	return Plugin_Handled;
+}
+
+public Action Command_NoDoorHug(int client, int args) {
+	if (IsClientLeader(client))
+		ToggleMarkerState(client, MK_NOHUG);
+
+	return Plugin_Handled;
+}
+
+public Action Command_Ping(int client, int args) {
+	if (IsClientLeader(client))
+		CreatePing(client);
+	
+	return Plugin_Handled;
+}
+
+public Action Command_RemoveMarkers(int client, int args) {
+	if (IsClientLeader(client)) 
+		RemoveAllMarkers(client);
 
 	return Plugin_Handled;
 }
@@ -1351,18 +1492,20 @@ public void MarkerMenu(int client) {
 
 	menu.SetTitle("%T %T", "Menu Prefix", client, "Marker menu title", client);
 
-	char normal[64], defend[64], zmtp[64], nohug[64], removemarker[64];
+	char normal[64], defend[64], zmtp[64], nohug[64], ping[64], removemarker[64];
 
-	Format(normal, 64, "%T", "Arrow Marker", client);
-	Format(defend, 64, "%T", "Defend Here", client);
-	Format(zmtp, 64, "%T", "ZM Teleport", client);
-	Format(nohug, 64, "%T", "No Doorhug", client);
-	Format(removemarker, 64, "%T", "Remove Marker", client);
+	FormatEx(normal, 64, "%T", "Arrow Marker", client);
+	FormatEx(defend, 64, "%T", "Defend Here", client);
+	FormatEx(zmtp, 64, "%T", "ZM Teleport", client);
+	FormatEx(nohug, 64, "%T", "No Doorhug", client);
+	FormatEx(ping, 64, "%T", "Ping Marker", client);
+	FormatEx(removemarker, 64, "%T", "Remove Marker", client);
 
 	menu.AddItem("normal", normal);
 	menu.AddItem("defend", defend);
 	menu.AddItem("zmtp", zmtp);
 	menu.AddItem("nohug", nohug);
+	menu.AddItem("ping", ping);
 	menu.AddItem("removemarker", removemarker);
 
 	menu.ExitBackButton = true;
@@ -1374,30 +1517,21 @@ public int MarkerMenuHandler(Menu menu, MenuAction action, int param1, int param
 	if (IsValidClient(param1) && IsClientLeader(param1)) {
 		switch (action) {
 			case MenuAction_DisplayItem: {
-				char info[64];
-				char display[64];
+				char info[64], display[64];
 				menu.GetItem(param2, info, sizeof(info));
 
-				if (strcmp(info, "normal", false) == 0) {
-					if (g_iClientMarker[MK_NORMAL][param1] != -1) {
-						Format(display, sizeof(display), "%T (✘)", "Arrow Marker", param1);
-						return RedrawMenuItem(display);
-					}
-				} else if (strcmp(info, "defend", false) == 0) {
-					if (g_iClientMarker[MK_DEFEND][param1] != -1) {
-						Format(display, sizeof(display), "%T (✘)", "Defend Here", param1);
-						return RedrawMenuItem(display);
-					}
-				} else if (strcmp(info, "zmtp", false) == 0) {
-					if (g_iClientMarker[MK_ZMTP][param1] != -1) {
-						Format(display, sizeof(display), "%T (✘)", "ZM Teleport", param1);
-						return RedrawMenuItem(display);
-					}
-				} else if (strcmp(info, "nohug", false) == 0) {
-					if (g_iClientMarker[MK_NOHUG][param1] != -1) {
-						Format(display, sizeof(display), "%T (✘)", "No Doorhug", param1);
-						return RedrawMenuItem(display);
-					}
+				if (strcmp(info, "normal", false) == 0 && g_iClientMarker[MK_NORMAL][param1] != -1) {
+					FormatEx(display, sizeof(display), "%T (✘)", "Arrow Marker", param1);
+					return RedrawMenuItem(display);
+				} else if (strcmp(info, "defend", false) == 0 && g_iClientMarker[MK_DEFEND][param1] != -1) {
+					FormatEx(display, sizeof(display), "%T (✘)", "Defend Here", param1);
+					return RedrawMenuItem(display);
+				} else if (strcmp(info, "zmtp", false) == 0 && g_iClientMarker[MK_ZMTP][param1] != -1) {
+					FormatEx(display, sizeof(display), "%T (✘)", "ZM Teleport", param1);
+					return RedrawMenuItem(display);
+				} else if (strcmp(info, "nohug", false) == 0 && g_iClientMarker[MK_NOHUG][param1] != -1) {
+					FormatEx(display, sizeof(display), "%T (✘)", "No Doorhug", param1);
+					return RedrawMenuItem(display);
 				}
 			}
 
@@ -1405,30 +1539,18 @@ public int MarkerMenuHandler(Menu menu, MenuAction action, int param1, int param
 				char info[64];
 				menu.GetItem(param2, info, sizeof(info));
 
-				if (strcmp(info, "normal", false) == 0) {
-					if (g_iClientMarker[MK_NORMAL][param1] != -1)
-						RemoveMarker(param1, MK_NORMAL);
-					else
-						SpawnMarker(param1, MK_NORMAL);
-				} else if (strcmp(info, "defend", false) == 0) {
-					if (g_iClientMarker[MK_DEFEND][param1] != -1)
-						RemoveMarker(param1, MK_DEFEND);
-					else
-						SpawnMarker(param1, MK_DEFEND);
-				} else if (strcmp(info, "zmtp", false) == 0) {
-					if (g_iClientMarker[MK_ZMTP][param1] != -1)
-						RemoveMarker(param1, MK_ZMTP);
-					else
-						SpawnMarker(param1, MK_ZMTP);
-				} else if (strcmp(info, "nohug", false) == 0) {
-					if (g_iClientMarker[MK_NOHUG][param1] != -1)
-						RemoveMarker(param1, MK_NOHUG);
-					else
-						SpawnMarker(param1, MK_NOHUG);
-				} else if (strcmp(info, "removemarker", false) == 0) {
-					for (int i = 0; i < 4; i++)
-						RemoveMarker(param1, i);
-				}
+				if (strcmp(info, "normal", false) == 0)
+					ToggleMarkerState(param1, MK_NORMAL);
+				else if (strcmp(info, "defend", false) == 0)
+					ToggleMarkerState(param1, MK_DEFEND);
+				else if (strcmp(info, "zmtp", false) == 0)
+					ToggleMarkerState(param1, MK_ZMTP);
+				else if (strcmp(info, "nohug", false) == 0)
+					ToggleMarkerState(param1, MK_NOHUG);
+				else if (strcmp(info, "ping", false) == 0)
+					CreatePing(param1);
+				else if (strcmp(info, "removemarker", false) == 0)
+					RemoveAllMarkers(param1);
 
 				MarkerMenu(param1);
 			}
@@ -1443,6 +1565,22 @@ public int MarkerMenuHandler(Menu menu, MenuAction action, int param1, int param
 		}
 	}
 	return 0;
+}
+
+stock void ToggleMarkerState(int client, int type) {
+	if (g_iClientMarker[type][client] != -1)
+		RemoveMarker(client, type);
+	else
+		SpawnMarker(client, type);
+}
+
+stock void RemoveAllMarkers(int client) {
+	for (int i = 0; i < MK_TOTAL; i++) {
+		RemoveMarker(client, i);
+	}
+
+	if (g_bPingBeamActive[client])
+		KillPingBeam(client);
 }
 
 public void RemoveMarker(int client, int type) {
@@ -1464,19 +1602,21 @@ public void RemoveMarker(int client, int type) {
 	// Turn Off Neon related to the marker
 	char sTargetName[64];
 	if (type == MK_NORMAL)
-		Format(sTargetName, sizeof(sTargetName), "MK_NORMAL%d", g_sSteamIDs64[client]);
+		FormatEx(sTargetName, sizeof(sTargetName), "MK_NORMAL%d", g_sSteamIDs64[client]);
 	else if (type == MK_DEFEND)
-		Format(sTargetName, sizeof(sTargetName), "MK_DEFEND%d", g_sSteamIDs64[client]);
+		FormatEx(sTargetName, sizeof(sTargetName), "MK_DEFEND%d", g_sSteamIDs64[client]);
 	else if (type == MK_NOHUG)
-		Format(sTargetName, sizeof(sTargetName), "MK_NOHUG%d", g_sSteamIDs64[client]);
+		FormatEx(sTargetName, sizeof(sTargetName), "MK_NOHUG%d", g_sSteamIDs64[client]);
 	else if (type == MK_ZMTP)
-		Format(sTargetName, sizeof(sTargetName), "MK_ZMTP%d", g_sSteamIDs64[client]);
+		FormatEx(sTargetName, sizeof(sTargetName), "MK_ZMTP%d", g_sSteamIDs64[client]);
+	else if (type == MK_PING)
+		FormatEx(sTargetName, sizeof(sTargetName), "MK_PING%d", g_sSteamIDs64[client]);
 
 	int iCounter = FindEntityByTargetname(INVALID_ENT_REFERENCE, sTargetName, "light_dynamic");
 	if (iCounter != INVALID_ENT_REFERENCE)
 		AcceptEntityInput(iCounter, "Kill");
 
-	g_iClientMarker[type][client] = -1;
+	Reset_ClientMarker(client, type);
 	g_iMarkerEntities[type][client] = -1;
 	g_iNeonEntities[type][client] = -1;
 }
@@ -1486,6 +1626,11 @@ public void SpawnMarker(int client, int type) {
 		CPrintToChat(client, "%T Marker spawn cancelled, too many Edicts. Try again later.", "Prefix", client);
 		return;
 	}
+
+	if (g_iMarkerPos[client] == MK_TYPE_CROSSHAIR || type == MK_PING)
+		GetPlayerEye(client, g_pos);
+	else
+		GetClientAbsOrigin(client, g_pos);
 
 	int slot = GetLeaderIndexWithLeaderSlot(g_iClientLeaderSlot[client]);
 
@@ -1501,6 +1646,9 @@ public void SpawnMarker(int client, int type) {
 	} else if (type == MK_ZMTP) {
 		g_iMarkerEntities[type][client] = SpawnSpecialMarker(client, g_LeaderData[slot].L_MarkerZMTP_VMT);
 		g_iNeonEntities[type][client] = SetupSpecialNeon(client, g_LeaderData[slot].L_iColorZMTP, type);
+	} else if (type == MK_PING) {
+		g_iMarkerEntities[type][client] = SpawnSpecialMarker(client, g_LeaderData[slot].L_MarkerPing_VMT);
+		// g_iNeonEntities[type][client] = SetupSpecialNeon(client, g_LeaderData[slot].L_iColorPing, type);
 	}
 
 	g_iClientMarker[type][client] = SpawnAimMarker(client, g_LeaderData[slot].L_MarkerMDL, type);
@@ -1512,11 +1660,6 @@ public int SpawnAimMarker(int client, char[] model, int type) {
 
 	int Ent = CreateEntityByName("prop_dynamic");
 	if (!Ent) return -1;
-
-	if (g_iMarkerPos[client] == MK_CROSSHAIR)
-		GetPlayerEye(client, g_pos);
-	else
-		GetClientAbsOrigin(client, g_pos);
 
 	DispatchKeyValue(Ent, "model", model);
 	DispatchKeyValue(Ent, "DefaultAnim", "default");
@@ -1557,13 +1700,16 @@ public int SpawnSpecialMarker(int client, char[] sprite) {
 	int Ent = CreateEntityByName("env_sprite");
 	if (!Ent) return -1;
 
-	if (g_iMarkerPos[client] == MK_CROSSHAIR) {
-		GetPlayerEye(client, g_pos);
-		g_pos[2] += 160.0;
-	} else {
-		GetClientAbsOrigin(client, g_pos);
-		g_pos[2] += 160.0;
-	}
+	int slot = GetLeaderIndexWithLeaderSlot(g_iClientLeaderSlot[client]);
+
+	float vec[3];
+	vec[0] = g_pos[0];
+	vec[1] = g_pos[1];
+
+	if (strcmp(sprite, g_LeaderData[slot].L_MarkerPing_VMT, false) == 0)
+		vec[2] = g_pos[2] + 40;
+	else
+		vec[2] = g_pos[2] + 160;
 
 	DispatchKeyValue(Ent, "model", sprite);
 	DispatchKeyValue(Ent, "classname", "env_sprite");
@@ -1579,7 +1725,7 @@ public int SpawnSpecialMarker(int client, char[] sprite) {
 	SetVariantString("disableshadows 1");
 	AcceptEntityInput(Ent, "AddOutput");
 
-	TeleportEntity(Ent, g_pos, NULL_VECTOR, NULL_VECTOR);
+	TeleportEntity(Ent, vec, NULL_VECTOR, NULL_VECTOR);
 
 	return Ent;
 }
@@ -1595,13 +1741,19 @@ stock int SetupPlayerNeon(int client) {
 
 	float fOrigin[3];
 	GetClientAbsOrigin(client, fOrigin);
+	// fOrigin[2] -= 10;
 
 	char sTargetName[64];
-	Format(sTargetName, sizeof(sTargetName), "light_%d", g_sSteamIDs64[client]);
+	FormatEx(sTargetName, sizeof(sTargetName), "light_%d", g_sSteamIDs64[client]);
+
+	int slot = GetLeaderIndexWithLeaderSlot(g_iClientLeaderSlot[client]);
+
+	char sColor[64];
+	FormatEx(sColor, sizeof(sColor), "%i %i %i %i", g_LeaderData[slot].L_iColorPing[0], g_LeaderData[slot].L_iColorPing[1], g_LeaderData[slot].L_iColorPing[2], g_LeaderData[slot].L_iColorPing[3]);
 
 	DispatchKeyValue(Neon, "targetname", sTargetName);
-	DispatchKeyValue(Neon, "_light", "25 25 200 255");
-	DispatchKeyValue(Neon, "brightness", "5");
+	DispatchKeyValue(Neon, "_light", sColor);
+	DispatchKeyValue(Neon, "brightness", "2");
 	DispatchKeyValue(Neon, "distance", "150");
 	DispatchKeyValue(Neon, "spotlight_radius", "50");
 	DispatchKeyValue(Neon, "style", "0");
@@ -1616,7 +1768,7 @@ stock int SetupPlayerNeon(int client) {
 
 stock int RemovePlayerNeon(int client) {
 	char sTargetName[64];
-	Format(sTargetName, sizeof(sTargetName), "light_%d", g_sSteamIDs64[client]);
+	FormatEx(sTargetName, sizeof(sTargetName), "light_%d", g_sSteamIDs64[client]);
 
 	int iCounter = FindEntityByTargetname(INVALID_ENT_REFERENCE, sTargetName, "light_dynamic");
 	if (iCounter != INVALID_ENT_REFERENCE)
@@ -1625,34 +1777,37 @@ stock int RemovePlayerNeon(int client) {
 }
 
 stock int SetupSpecialNeon(int client, int color[4], int type) {
+	if (GetEdictsCount() > MAXEDICTS)
+		return -1;
+
 	int Neon = CreateEntityByName("light_dynamic");
 
 	if (!IsValidEntity(Neon))
 		return -1;
 
-	if (g_iMarkerPos[client] == MK_CROSSHAIR) {
-		GetPlayerEye(client, g_pos);
-		g_pos[2] += 10.0;
-	} else {
-		GetClientAbsOrigin(client, g_pos);
-		g_pos[2] += 10.0;
-	}
+	float vec[3];
+	vec[0] = g_pos[0];
+	vec[1] = g_pos[1];
+	vec[2] = g_pos[2];
 
 	char sColor[64], sTargetName[64];
 	int slot = GetLeaderIndexWithLeaderSlot(g_iClientLeaderSlot[client]);
 
 	if (type == MK_NORMAL) {
-		Format(sColor, sizeof(sColor), "%i %i %i %i", g_LeaderData[slot].L_iColorArrow[0], g_LeaderData[slot].L_iColorArrow[1], g_LeaderData[slot].L_iColorArrow[2], g_LeaderData[slot].L_iColorArrow[3]);
-		Format(sTargetName, sizeof(sTargetName), "MK_NORMAL%d", g_sSteamIDs64[client]);
+		FormatEx(sColor, sizeof(sColor), "%i %i %i %i", g_LeaderData[slot].L_iColorArrow[0], g_LeaderData[slot].L_iColorArrow[1], g_LeaderData[slot].L_iColorArrow[2], g_LeaderData[slot].L_iColorArrow[3]);
+		FormatEx(sTargetName, sizeof(sTargetName), "MK_NORMAL%d", g_sSteamIDs64[client]);
 	} else if (type  == MK_DEFEND) {
-		Format(sColor, sizeof(sColor), "%i %i %i %i", g_LeaderData[slot].L_iColorDefend[0], g_LeaderData[slot].L_iColorDefend[1], g_LeaderData[slot].L_iColorDefend[2], g_LeaderData[slot].L_iColorDefend[3]);
-		Format(sTargetName, sizeof(sTargetName), "MK_DEFEND%d", g_sSteamIDs64[client]);
+		FormatEx(sColor, sizeof(sColor), "%i %i %i %i", g_LeaderData[slot].L_iColorDefend[0], g_LeaderData[slot].L_iColorDefend[1], g_LeaderData[slot].L_iColorDefend[2], g_LeaderData[slot].L_iColorDefend[3]);
+		FormatEx(sTargetName, sizeof(sTargetName), "MK_DEFEND%d", g_sSteamIDs64[client]);
 	} else if (type  == MK_NOHUG) {
-		Format(sColor, sizeof(sColor), "%i %i %i %i", g_LeaderData[slot].L_iColorNOHUG[0], g_LeaderData[slot].L_iColorNOHUG[1], g_LeaderData[slot].L_iColorNOHUG[2], g_LeaderData[slot].L_iColorNOHUG[3]);
-		Format(sTargetName, sizeof(sTargetName), "MK_NOHUG%d", g_sSteamIDs64[client]);
+		FormatEx(sColor, sizeof(sColor), "%i %i %i %i", g_LeaderData[slot].L_iColorNOHUG[0], g_LeaderData[slot].L_iColorNOHUG[1], g_LeaderData[slot].L_iColorNOHUG[2], g_LeaderData[slot].L_iColorNOHUG[3]);
+		FormatEx(sTargetName, sizeof(sTargetName), "MK_NOHUG%d", g_sSteamIDs64[client]);
+	} else if (type  == MK_ZMTP) {
+		FormatEx(sColor, sizeof(sColor), "%i %i %i %i", g_LeaderData[slot].L_iColorZMTP[0], g_LeaderData[slot].L_iColorZMTP[1], g_LeaderData[slot].L_iColorZMTP[2], g_LeaderData[slot].L_iColorZMTP[3]);
+		FormatEx(sTargetName, sizeof(sTargetName), "MK_ZMTP%d", g_sSteamIDs64[client]);
 	} else {
-		Format(sColor, sizeof(sColor), "%i %i %i %i", g_LeaderData[slot].L_iColorZMTP[0], g_LeaderData[slot].L_iColorZMTP[1], g_LeaderData[slot].L_iColorZMTP[2], g_LeaderData[slot].L_iColorZMTP[3]);
-		Format(sTargetName, sizeof(sTargetName), "MK_ZMTP%d", g_sSteamIDs64[client]);
+		FormatEx(sColor, sizeof(sColor), "%i %i %i %i", g_LeaderData[slot].L_iColorPing[0], g_LeaderData[slot].L_iColorPing[1], g_LeaderData[slot].L_iColorPing[2], g_LeaderData[slot].L_iColorPing[3]);
+		FormatEx(sTargetName, sizeof(sTargetName), "MK_PING%d", g_sSteamIDs64[client]);
 	}
 
 	DispatchKeyValue(Neon, "targetname", sTargetName);
@@ -1664,7 +1819,7 @@ stock int SetupSpecialNeon(int client, int color[4], int type) {
 	DispatchSpawn(Neon);
 	AcceptEntityInput(Neon, "TurnOn");
 
-	TeleportEntity(Neon, g_pos, NULL_VECTOR, NULL_VECTOR);
+	TeleportEntity(Neon, vec, NULL_VECTOR, NULL_VECTOR);
 	return 0;
 }
 
@@ -1697,7 +1852,7 @@ public Action HookPlayerChat(int client, char[] command, int args) {
 		char codename[32];
 		GetLeaderCodename(g_iClientLeaderSlot[client], codename, sizeof(codename));
 
-		if (g_ccc) {
+		if (g_bPlugin_ccc) {
 			CPrintToChatAll("{darkred}[{orange}Leader %s{darkred}] {%s}%N {default}: {%s}%s", 
 				codename, szColorName[client], client, szColorChat[client], LeaderText);
 			return Plugin_Handled;
@@ -1722,11 +1877,11 @@ public Action HookPlayerChatTeam(int client, char[] command, int args) {
 		char codename[32], szMessage[255];
 		GetLeaderCodename(g_iClientLeaderSlot[client], codename, sizeof(codename));
 
-		if (g_ccc) {
-			Format(szMessage, sizeof(szMessage), "(Human) {darkred}[{orange}Leader %s{darkred}] {%s}%N {default}: {%s}%s", 
+		if (g_bPlugin_ccc) {
+			FormatEx(szMessage, sizeof(szMessage), "(Human) {darkred}[{orange}Leader %s{darkred}] {%s}%N {default}: {%s}%s", 
 				codename, szColorName[client], client, szColorChat[client], LeaderText);
 		} else {
-			Format(szMessage, sizeof(szMessage), "(Human) {darkred}[{orange}Leader %s{darkred}] {teamcolor}%N {default}: {default}%s", codename, client, LeaderText);
+			FormatEx(szMessage, sizeof(szMessage), "(Human) {darkred}[{orange}Leader %s{darkred}] {teamcolor}%N {default}: {default}%s", codename, client, LeaderText);
 		}
 
 		for (int i = 1; i <= MaxClients; i++) {
@@ -1748,14 +1903,14 @@ void GetClientChat(int client) {
 	char szColorNameSanitized[64], szColorChatSanitized[64];
 
 	if (szColorName[client][0] != '\0' && IsValidHex(szColorName[client])) {
-		Format(szColorNameSanitized, sizeof(szColorNameSanitized), "#%s", szColorName[client]);
+		FormatEx(szColorNameSanitized, sizeof(szColorNameSanitized), "#%s", szColorName[client]);
 		szColorName[client] = szColorNameSanitized;
 	} else {
 		szColorName[client] = "lightblue";
 	}
 
 	if (szColorChat[client][0] != '\0' && IsValidHex(szColorChat[client])) {
-		Format(szColorChatSanitized, sizeof(szColorChatSanitized), "#%s", szColorChat[client]);
+		FormatEx(szColorChatSanitized, sizeof(szColorChatSanitized), "#%s", szColorChat[client]);
 		szColorChat[client] = szColorChatSanitized;
 	} else {
 		szColorChat[client] = "default";
@@ -1827,7 +1982,7 @@ public void PrintRadio(int client, char[] text) {
 
 	if (IsClientLeader(client)) {
 		GetLeaderCodename(g_iClientLeaderSlot[client], codename, sizeof(codename));
-		Format(szMessage, sizeof(szMessage), "{darkred}[{orange}Leader %s{darkred}] {teamcolor}%N {default}(RADIO): %s", codename, client, text);
+		FormatEx(szMessage, sizeof(szMessage), "{darkred}[{orange}Leader %s{darkred}] {teamcolor}%N {default}(RADIO): %s", codename, client, text);
 		for (int i = 1; i <= MaxClients; i++) {
 			if (IsClientInGame(i) && IsPlayerAlive(i) && GetClientTeam(i) == 3)
 				CPrintToChat(i, szMessage);
@@ -1846,10 +2001,15 @@ void SetClientLeader(int client, int adminset = -1, int slot) {
 		return;
 	}
 
+	g_bClientLeader[client] = true;
+	g_iClientLeaderSlot[client] = slot;
+	g_iCurrentLeader[slot] = client;
+	Reset_ClientSprite(client);
+
 	char codename[32];
 	GetLeaderCodename(slot, codename, sizeof(codename));
 
-	if (g_ccc)
+	if (g_bPlugin_ccc)
 		GetClientChat(client);
 
 	if (g_LeaderData[slot].L_CodeNameVMT[0] != '\0')
@@ -1859,8 +2019,7 @@ void SetClientLeader(int client, int adminset = -1, int slot) {
 		SetupPlayerNeon(client);
 
 	if (g_cvGlowLeader.BoolValue) {
-		SDKHook(client, SDKHook_PostThinkPost, OnPostThinkPost);
-		ToolsSetEntityColor(client, g_iGlowColor[client][0], g_iGlowColor[client][1], g_iGlowColor[client][2]);
+		ToolsSetEntityColor(client, g_LeaderData[slot].L_iColorPing[0], g_LeaderData[slot].L_iColorPing[1], g_LeaderData[slot].L_iColorPing[2]);
 	}
 
 	for (int i = 1; i <= MaxClients; i++) {
@@ -1868,15 +2027,9 @@ void SetClientLeader(int client, int adminset = -1, int slot) {
 			CPrintToChat(i, "%T %T", "Prefix", i, "Become New Leader", i, client, codename);
 	}
 
-	for (int i = 0; i < 4; i++) {
-		g_iClientMarker[i][client] = -1;
+	for (int i = 0; i < MK_TOTAL; i++) {
+		Reset_ClientMarker(client, i);
 	}
-
-	g_bClientLeader[client] = true;
-	g_iClientLeaderSlot[client] = slot;
-	g_iCurrentLeader[slot] = client;
-	g_iClientSprite[client] = SP_NONE;
-	
 
 	Call_StartForward(g_hSetClientLeaderForward);
 	Call_PushCell(client);
@@ -1889,8 +2042,7 @@ void RemoveLeader(int client, ResignReason reason, bool announce = true) {
 	int slot = GetClientLeaderSlot(client);
 	GetLeaderCodename(slot, codename, sizeof(codename));
 
-	for (int i = 0; i < 4; i++)
-		RemoveMarker(client, i);
+	RemoveAllMarkers(client);
 
 	RemoveSpriteFollow(client);
 	RemoveSpriteCodeName(client);
@@ -1899,11 +2051,7 @@ void RemoveLeader(int client, ResignReason reason, bool announce = true) {
 		RemovePlayerNeon(client);
 
 	if (g_cvGlowLeader.BoolValue) {
-		SDKUnhook(client, SDKHook_PostThinkPost, OnPostThinkPost);
-		g_iGlowColor[client][0] = 255;
-		g_iGlowColor[client][1] = 255;
-		g_iGlowColor[client][2] = 255;
-		ToolsSetEntityColor(client, g_iGlowColor[client][0], g_iGlowColor[client][1], g_iGlowColor[client][2]);
+		ToolsSetEntityColor(client, 255, 255, 255);
 	}
 
 	if (g_bTrailActive[client])
@@ -1919,7 +2067,7 @@ void RemoveLeader(int client, ResignReason reason, bool announce = true) {
 			continue;
 			
 		if (GetClientFromSerial(g_iClientVoteWhom[i]) == client)
-			g_iClientVoteWhom[i] = -1;
+			Reset_ClientVoteWho(i);
 	}
 
 	Call_StartForward(g_hRemoveClientLeaderForward);
@@ -1956,13 +2104,14 @@ void RemoveLeader(int client, ResignReason reason, bool announce = true) {
 		}
 	}
 
-	g_bClientLeader[client] = false;
-	g_iCurrentLeader[g_iClientLeaderSlot[client]] = -1;
-	g_iClientLeaderSlot[client] = -1;
-	g_iClientGetVoted[client] = 0;
-	g_iClientSprite[client] = -1;
-	g_bBeaconActive[client] = false;
-	g_bTrailActive[client] = false;
+	Reset_CurrentLeader(client);
+	Reset_CurrentLeaderSlot(client);
+	Reset_LeaderSlot(client);
+	Reset_ClientGetVoted(client);
+	Reset_ClientSprite(client);
+	Reset_ClientBeaconActive(client);
+	Reset_ClientPingBeamActive(client);
+	Reset_ClientTrailActive(client);
 }
 
 /* =========================================================================
@@ -1971,7 +2120,7 @@ void RemoveLeader(int client, ResignReason reason, bool announce = true) {
 // +lookatweapon exist only on CS:GO
 public Action QuickLeaderMenuCommand(int client, const char[] command, int argc) {
 	if (IsClientLeader(client))
-		QuickLeaderCommand(client);
+		QuickPingCommand(client);
 
 	return Plugin_Continue;
 }
@@ -1984,14 +2133,22 @@ public Action QuickMarkerMenuCommand(int client, const char[] command, int argc)
 	return Plugin_Continue;
 }
 
-// Flashlight : Marker Menu
+// Flashlight x2 : Marker Menu
+// Spray x2 : Ping Shortcut
+// +Attack3 x4 : Leader Menu (x4: +attack(<ANY>) = attack in loop)
 public Action OnPlayerRunCmd(int client, int &buttons, int &impulse) {
 	if (IsValidClient(client) && IsPlayerAlive(client) && IsClientLeader(client)) {
 		if (impulse == 0x64) {
 			QuickMarkerCommand(client);
-			return Plugin_Changed;
+			return Plugin_Continue;
 		}
+
 		if (impulse == 0xC9) {
+			QuickPingCommand(client);
+			return Plugin_Continue;
+		}
+
+		if (buttons & IN_ATTACK3) {
 			QuickLeaderCommand(client);
 			return Plugin_Continue;
 		}
@@ -2000,10 +2157,10 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse) {
 	return Plugin_Continue;
 }
 
-// Spray : Leader Menu shortcut
+// Spray : Ping shortcut
 public Action HookDecal(const char[] sTEName, const int[] iClients, int iNumClients, float fSendDelay) {
 	int client = TE_ReadNum("m_nPlayer");
-	RequestFrame(QuickLeaderCommand, client);
+	RequestFrame(QuickPingCommand, client);
 	return Plugin_Continue;
 }
 
@@ -2017,13 +2174,23 @@ stock void QuickMarkerCommand(int client) {
 		MarkerMenu(client);
 }
 
+stock void QuickPingCommand(int client) {
+	if (g_bShorcut[client]) {
+		g_iButtonPingCount[client]++;
+		CreateTimer(1.0, ResetPingButtonPressed, client);
+	}
+
+	if (g_iButtonPingCount[client] >= 2 && IsClientLeader(client))
+		CreatePing(client);
+}
+
 stock void QuickLeaderCommand(int client) {
 	if (g_bShorcut[client]) {
 		g_iButtonLeaderCount[client]++;
 		CreateTimer(1.0, ResetLeaderButtonPressed, client);
 	}
 
-	if (g_iButtonLeaderCount[client] >= 2 && IsClientLeader(client))
+	if (g_iButtonLeaderCount[client] >= 4 && IsClientLeader(client))
 		LeaderMenu(client);
 }
 
@@ -2037,14 +2204,16 @@ public Action ResetMarkerButtonPressed(Handle timer, any client) {
 	return Plugin_Handled;
 }
 
+public Action ResetPingButtonPressed(Handle timer, any client) {
+	g_iButtonPingCount[client] = 0;
+	return Plugin_Handled;
+}
+
 /* =========================================================================
 ||  VIP
 ============================================================================ */
 stock bool IsClientVIP(int client) {
-	if (!g_cvEnableVIP.BoolValue)
-		return false;
-
-	if (!vipcore)
+	if (!g_cvEnableVIP.BoolValue || !g_bPlugin_vipcore)
 		return false;
 
 	char group[64];
@@ -2119,7 +2288,7 @@ stock int GetLeaderIndexWithLeaderSlot(int slot) {
 stock int GetLeaderCodename(int slot, char[] buffer, int maxlen) {
 	for(int i = 0; i < TotalLeader; i++) {
 		if (g_LeaderData[i].L_Slot == slot) {
-			Format(buffer, maxlen, "%s", g_LeaderData[i].L_Codename);
+			FormatEx(buffer, maxlen, "%s", g_LeaderData[i].L_Codename);
 			return 1;
 		}
 	}
@@ -2155,10 +2324,7 @@ stock bool IsClientAdmin(int client) {
 
 stock bool IsPossibleLeader(int client) {
 	for (int i = 0; i <= (MAXPOSSIBLELEADERS - 1); i++) {
-		if (IsClientAdmin(client))
-			return true;
-
-		if (IsClientVIP(client))
+		if (IsClientAdmin(client) || IsClientVIP(client))
 			return true;
 
 		if (strcmp(g_sSteamIDs2[client], g_sLeaderAuth[i], false) == 0)
@@ -2290,19 +2456,8 @@ public int FindEntityByTargetname(int entity, const char[] sTargetname, const ch
 }
 
 /* =========================================================================
-||  Glow & Rainbow Leader
+||  Glow Leader
 ============================================================================ */
-public void OnPostThinkPost(int client) {
-	float i = GetGameTime();
-	float Frequency = 2.0;
-
-	int Red   = RoundFloat(Sine(Frequency * i + 0.0) * 127.0 + 128.0);
-	int Green = RoundFloat(Sine(Frequency * i + 2.0943951) * 127.0 + 128.0);
-	int Blue  = RoundFloat(Sine(Frequency * i + 4.1887902) * 127.0 + 128.0);
-
-	ToolsSetEntityColor(client, Red, Green, Blue);
-}
-
 stock void ToolsGetEntityColor(int entity, int aColor[4]) {
 	static bool s_GotConfig = false;
 	static char s_sProp[32];
@@ -2337,8 +2492,8 @@ public void ResignConfirmMenu(int client) {
 	menu.SetTitle("%T ?", "Resign from Leader", client);
 
 	char no[64], yes[64];
-	Format(no, 64, "%T", "No", client);
-	Format(yes, 64, "%T", "Yes", client);
+	FormatEx(no, 64, "%T", "No", client);
+	FormatEx(yes, 64, "%T", "Yes", client);
 
 	menu.AddItem("canceled", no);
 	menu.AddItem("confirmed", yes);
@@ -2352,15 +2507,14 @@ public int ResignConfirmMenuHandler(Menu menu, MenuAction action, int param1, in
 	if (IsValidClient(param1) && IsClientLeader(param1)) {
 		switch (action) {
 			case MenuAction_DisplayItem: {
-				char info[64];
-				char display[64];
+				char info[64], display[64];
 				menu.GetItem(param2, info, sizeof(info));
 
 				if (strcmp(info, "canceled", false) == 0) {
-					Format(display, sizeof(display), "%T", "No", param1);
+					FormatEx(display, sizeof(display), "%T", "No", param1);
 					return RedrawMenuItem(display);
 				} else if (strcmp(info, "confirmed", false) == 0) {
-					Format(display, sizeof(display), "%T", "Yes", param1);
+					FormatEx(display, sizeof(display), "%T", "Yes", param1);
 					return RedrawMenuItem(display);
 				}
 			}
@@ -2383,4 +2537,58 @@ public int ResignConfirmMenuHandler(Menu menu, MenuAction action, int param1, in
 		}
 	}
 	return 0;
+}
+
+/* =========================================================================
+||  Reset Values functions
+============================================================================ */
+stock void Reset_PlayerState(int client) {
+	Reset_CurrentLeader(client);
+	Reset_LeaderSlot(client);
+	Reset_ClientGetVoted(client);
+	Reset_ClientNextVote(client);
+	Reset_ClientVoteWho(client);
+}
+
+stock void Reset_CurrentLeaderSlot(int client) {
+	g_iCurrentLeader[g_iClientLeaderSlot[client]] = -1;
+}
+
+stock void Reset_LeaderSlot(int client) {
+	g_iClientLeaderSlot[client] = -1;
+}
+
+stock void Reset_CurrentLeader(int client) {
+	g_bClientLeader[client] = false;
+}
+
+stock void Reset_ClientVoteWho(int client) {
+	g_iClientVoteWhom[client] = -1;
+}
+
+stock void Reset_ClientGetVoted(int client) {
+	g_iClientGetVoted[client] = 0;
+}
+
+stock void Reset_ClientNextVote(int client) {
+	g_iClientNextVote[client] = 0;
+}
+
+stock void Reset_ClientSprite(int client) {
+	g_iClientSprite[client] = -1;
+}
+
+stock void Reset_ClientBeaconActive(int client) {
+	g_bBeaconActive[client] = false;
+}
+
+stock void Reset_ClientPingBeamActive(int client) {
+	g_bPingBeamActive[client] = false;
+}
+stock void Reset_ClientTrailActive(int client) {
+	g_bTrailActive[client] = false;
+}
+
+stock void Reset_ClientMarker(int client, int type) {
+	g_iClientMarker[type][client] = -1;
 }

@@ -2,14 +2,14 @@
 {
 	"alpha"
 	{
-		"codename"		"Alpha"
+		"codename"			"Alpha"
 		"leader_slot"		"0"
 
 		"codename_vmt"		"materials/nide/leader/codename/alpha.vmt"
-        	"codename_vtf"		"materials/nide/leader/codename/alpha.vtf"
+		"codename_vtf"		"materials/nide/leader/codename/alpha.vtf"
 
-		"trail_vmt"		"materials/nide/leader/trail.vmt"
-        	"trail_vtf"		"materials/nide/leader/trail.vtf"
+		"trail_vmt"			"materials/nide/leader/trail.vmt"
+		"trail_vtf"			"materials/nide/leader/trail.vtf"
 
 		"follow_vmt"		"materials/nide/leader/follow.vmt"
 		"follow_vtf"		"materials/nide/leader/follow.vtf"
@@ -17,33 +17,38 @@
 		"marker_mdl"		"models/oylsister/misc/signal_marker.mdl"
 		"marker_vmt"		"materials/oylsister/signal_marker/material0.vmt"
 
-		"arrow_vmt"		"materials/oylsister/eds_arrow.vmt"
-		"arrow_vtf"		"materials/oylsister/eds_arrow.vtf"
+		"arrow_vmt"			"materials/oylsister/eds_arrow.vmt"
+		"arrow_vtf"			"materials/oylsister/eds_arrow.vtf"
 		"arrow_color"		"72 255 72 255"
 
-        	"defend_vmt"		"materials/nide/leader/defend.vmt"
+		"defend_vmt"		"materials/nide/leader/defend.vmt"
 		"defend_vtf"		"materials/nide/leader/defend.vtf"
 		"defend_color"		"211 211 211 255"
 
-		"zmtp_vmt"		"materials/oylsister/eds_zmtp.vmt"
-		"zmtp_vtf"		"materials/oylsister/eds_zmtp.vtf"
+		"zmtp_vmt"			"materials/oylsister/eds_zmtp.vmt"
+		"zmtp_vtf"			"materials/oylsister/eds_zmtp.vtf"
 		"zmtp_color"		"214 72 255 255"
 
 		"nodoorhug_vmt"		"materials/oylsister/eds_nohug.vmt"
 		"nodoorhug_vtf"		"materials/oylsister/eds_nohug.vtf"
 		"nodoorhug_color"	"255 72 72 255"
+
+		"ping_vmt"			"materials/oylsister/ping.vmt"
+		"ping_vtf"			"materials/oylsister/ping.vtf"
+		"ping_color" 		"72 255 72 255"
+		"ping_sound" 		"zleader/cs2ping_sfx.wav"
 	}
 
 	"bravo"
 	{
-		"codename"		"Bravo"
+		"codename"			"Bravo"
 		"leader_slot"		"1"
 
 		"codename_vmt"		"materials/nide/leader/codename/bravo.vmt"
-        	"codename_vtf"		"materials/nide/leader/codename/bravo.vtf"
+		"codename_vtf"		"materials/nide/leader/codename/bravo.vtf"
 
-		"trail_vmt"		"materials/nide/leader/trail.vmt"
-        	"trail_vtf"		"materials/nide/leader/trail.vtf"
+		"trail_vmt"			"materials/nide/leader/trail.vmt"
+		"trail_vtf"			"materials/nide/leader/trail.vtf"
 
 		"follow_vmt"		"materials/nide/leader/follow.vmt"
 		"follow_vtf"		"materials/nide/leader/follow.vtf"
@@ -51,33 +56,38 @@
 		"marker_mdl"		"models/oylsister/misc/signal_marker.mdl"
 		"marker_vmt"		"materials/oylsister/signal_marker/material0.vmt"
 
-		"arrow_vmt"		"materials/oylsister/eds_arrow.vmt"
-		"arrow_vtf"		"materials/oylsister/eds_arrow.vtf"
+		"arrow_vmt"			"materials/oylsister/eds_arrow.vmt"
+		"arrow_vtf"			"materials/oylsister/eds_arrow.vtf"
 		"arrow_color"		"72 255 72 255"
 
-        	"defend_vmt"		"materials/nide/leader/defend.vmt"
+		"defend_vmt"		"materials/nide/leader/defend.vmt"
 		"defend_vtf"		"materials/nide/leader/defend.vtf"
 		"defend_color"		"211 211 211 255"
 
-		"zmtp_vmt"		"materials/oylsister/eds_zmtp.vmt"
-		"zmtp_vtf"		"materials/oylsister/eds_zmtp.vtf"
+		"zmtp_vmt"			"materials/oylsister/eds_zmtp.vmt"
+		"zmtp_vtf"			"materials/oylsister/eds_zmtp.vtf"
 		"zmtp_color"		"214 72 255 255"
 
 		"nodoorhug_vmt"		"materials/oylsister/eds_nohug.vmt"
 		"nodoorhug_vtf"		"materials/oylsister/eds_nohug.vtf"
 		"nodoorhug_color"	"255 72 72 255"
+
+		"ping_vmt"			"materials/oylsister/ping.vmt"
+		"ping_vtf"			"materials/oylsister/ping.vtf"
+		"ping_color" 		"72 255 72 255"
+		"ping_sound" 		"zleader/cs2ping_sfx.wav"
 	}
 
 	"charlie"
 	{
-		"codename"		"Charlie"
+		"codename"			"Charlie"
 		"leader_slot"		"2"
 
 		"codename_vmt"		"materials/nide/leader/codename/charlie.vmt"
-        	"codename_vtf"		"materials/nide/leader/codename/charlie.vtf"
+		"codename_vtf"		"materials/nide/leader/codename/charlie.vtf"
 
-		"trail_vmt"		"materials/nide/leader/trail.vmt"
-        	"trail_vtf"		"materials/nide/leader/trail.vtf"
+		"trail_vmt"			"materials/nide/leader/trail.vmt"
+		"trail_vtf"			"materials/nide/leader/trail.vtf"
 
 		"follow_vmt"		"materials/nide/leader/follow.vmt"
 		"follow_vtf"		"materials/nide/leader/follow.vtf"
@@ -85,67 +95,38 @@
 		"marker_mdl"		"models/oylsister/misc/signal_marker.mdl"
 		"marker_vmt"		"materials/oylsister/signal_marker/material0.vmt"
 
-		"arrow_vmt"		"materials/oylsister/eds_arrow.vmt"
-		"arrow_vtf"		"materials/oylsister/eds_arrow.vtf"
+		"arrow_vmt"			"materials/oylsister/eds_arrow.vmt"
+		"arrow_vtf"			"materials/oylsister/eds_arrow.vtf"
 		"arrow_color"		"72 255 72 255"
 
-        	"defend_vmt"		"materials/nide/leader/defend.vmt"
+		"defend_vmt"		"materials/nide/leader/defend.vmt"
 		"defend_vtf"		"materials/nide/leader/defend.vtf"
 		"defend_color"		"211 211 211 255"
 
-		"zmtp_vmt"		"materials/oylsister/eds_zmtp.vmt"
-		"zmtp_vtf"		"materials/oylsister/eds_zmtp.vtf"
+		"zmtp_vmt"			"materials/oylsister/eds_zmtp.vmt"
+		"zmtp_vtf"			"materials/oylsister/eds_zmtp.vtf"
 		"zmtp_color"		"214 72 255 255"
 
 		"nodoorhug_vmt"		"materials/oylsister/eds_nohug.vmt"
 		"nodoorhug_vtf"		"materials/oylsister/eds_nohug.vtf"
 		"nodoorhug_color"	"255 72 72 255"
+
+		"ping_vmt"			"materials/oylsister/ping.vmt"
+		"ping_vtf"			"materials/oylsister/ping.vtf"
+		"ping_color" 		"72 255 72 255"
+		"ping_sound" 		"zleader/cs2ping_sfx.wav"
 	}
 
 	"delta"
 	{
-		"codename"		"Delta"
+		"codename"			"Delta"
 		"leader_slot"		"3"
 
 		"codename_vmt"		"materials/nide/leader/codename/delta.vmt"
-        	"codename_vtf"		"materials/nide/leader/codename/delta.vtf"
+		"codename_vtf"		"materials/nide/leader/codename/delta.vtf"
 
-		"trail_vmt"		"materials/nide/leader/trail.vmt"
-        	"trail_vtf"		"materials/nide/leader/trail.vtf"
-
-		"follow_vmt"		"materials/nide/leader/follow.vmt"
-		"follow_vtf"		"materials/nide/leader/follow.vtf"
-
-		"marker_mdl"		"models/oylsister/misc/signal_marker.mdl"
-		"marker_vmt"		"materials/oylsister/signal_marker/material0.vmt"
-
-		"arrow_vmt"		"materials/oylsister/eds_arrow.vmt"
-		"arrow_vtf"		"materials/oylsister/eds_arrow.vtf"
-		"arrow_color"		"72 255 72 255"
-
-        	"defend_vmt"		"materials/nide/leader/defend.vmt"
-		"defend_vtf"		"materials/nide/leader/defend.vtf"
-		"defend_color"		"211 211 211 255"
-
-		"zmtp_vmt"		"materials/oylsister/eds_zmtp.vmt"
-		"zmtp_vtf"		"materials/oylsister/eds_zmtp.vtf"
-		"zmtp_color"		"214 72 255 255"
-
-		"nodoorhug_vmt"	"materials/oylsister/eds_nohug.vmt"
-		"nodoorhug_vtf"	"materials/oylsister/eds_nohug.vtf"
-		"nodoorhug_color"	"255 72 72 255"
-	}
-
-	"echo"
-	{
-		"codename"		"Echo"
-		"leader_slot"		"4"
-
-		"codename_vmt"		"materials/nide/leader/codename/echo.vmt"
-        	"codename_vtf"		"materials/nide/leader/codename/echo.vtf"
-
-		"trail_vmt"		"materials/nide/leader/trail.vmt"
-        	"trail_vtf"		"materials/nide/leader/trail.vtf"
+		"trail_vmt"			"materials/nide/leader/trail.vmt"
+		"trail_vtf"			"materials/nide/leader/trail.vtf"
 
 		"follow_vmt"		"materials/nide/leader/follow.vmt"
 		"follow_vtf"		"materials/nide/leader/follow.vtf"
@@ -153,20 +134,64 @@
 		"marker_mdl"		"models/oylsister/misc/signal_marker.mdl"
 		"marker_vmt"		"materials/oylsister/signal_marker/material0.vmt"
 
-		"arrow_vmt"		"materials/oylsister/eds_arrow.vmt"
-		"arrow_vtf"		"materials/oylsister/eds_arrow.vtf"
+		"arrow_vmt"			"materials/oylsister/eds_arrow.vmt"
+		"arrow_vtf"			"materials/oylsister/eds_arrow.vtf"
 		"arrow_color"		"72 255 72 255"
 
-        	"defend_vmt"		"materials/nide/leader/defend.vmt"
+		"defend_vmt"		"materials/nide/leader/defend.vmt"
 		"defend_vtf"		"materials/nide/leader/defend.vtf"
 		"defend_color"		"211 211 211 255"
 
-		"zmtp_vmt"		"materials/oylsister/eds_zmtp.vmt"
-		"zmtp_vtf"		"materials/oylsister/eds_zmtp.vtf"
+		"zmtp_vmt"			"materials/oylsister/eds_zmtp.vmt"
+		"zmtp_vtf"			"materials/oylsister/eds_zmtp.vtf"
 		"zmtp_color"		"214 72 255 255"
 
 		"nodoorhug_vmt"		"materials/oylsister/eds_nohug.vmt"
 		"nodoorhug_vtf"		"materials/oylsister/eds_nohug.vtf"
 		"nodoorhug_color"	"255 72 72 255"
+
+		"ping_vmt"			"materials/oylsister/ping.vmt"
+		"ping_vtf"			"materials/oylsister/ping.vtf"
+		"ping_color" 		"72 255 72 255"
+		"ping_sound" 		"zleader/cs2ping_sfx.wav"
+	}
+
+	"echo"
+	{
+		"codename"			"Echo"
+		"leader_slot"		"4"
+
+		"codename_vmt"		"materials/nide/leader/codename/echo.vmt"
+		"codename_vtf"		"materials/nide/leader/codename/echo.vtf"
+
+		"trail_vmt"			"materials/nide/leader/trail.vmt"
+		"trail_vtf"			"materials/nide/leader/trail.vtf"
+
+		"follow_vmt"		"materials/nide/leader/follow.vmt"
+		"follow_vtf"		"materials/nide/leader/follow.vtf"
+
+		"marker_mdl"		"models/oylsister/misc/signal_marker.mdl"
+		"marker_vmt"		"materials/oylsister/signal_marker/material0.vmt"
+
+		"arrow_vmt"			"materials/oylsister/eds_arrow.vmt"
+		"arrow_vtf"			"materials/oylsister/eds_arrow.vtf"
+		"arrow_color"		"72 255 72 255"
+
+		"defend_vmt"		"materials/nide/leader/defend.vmt"
+		"defend_vtf"		"materials/nide/leader/defend.vtf"
+		"defend_color"		"211 211 211 255"
+
+		"zmtp_vmt"			"materials/oylsister/eds_zmtp.vmt"
+		"zmtp_vtf"			"materials/oylsister/eds_zmtp.vtf"
+		"zmtp_color"		"214 72 255 255"
+
+		"nodoorhug_vmt"		"materials/oylsister/eds_nohug.vmt"
+		"nodoorhug_vtf"		"materials/oylsister/eds_nohug.vtf"
+		"nodoorhug_color"	"255 72 72 255"
+
+		"ping_vmt"			"materials/oylsister/ping.vmt"
+		"ping_vtf"			"materials/oylsister/ping.vtf"
+		"ping_color" 		"72 255 72 255"
+		"ping_sound" 		"zleader/cs2ping_sfx.wav"
 	}
 }

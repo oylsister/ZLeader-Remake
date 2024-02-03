@@ -34,6 +34,12 @@ materials/oylsister/eds_arrow.vtf
 // No Doorhug
 materials/oylsister/eds_nohug.vmt
 materials/oylsister/eds_nohug.vtf
+// Ping Location
+materials/oylsister/ping.vmt
+materials/oylsister/ping.vtf
+
+// Ping sound
+sound/zleader/cs2ping_sfx.wav
 
 // Marker model
 materials/oylsister/signal_marker/material0.vtf

@@ -1,0 +1,8 @@
+"Sprite"
+{
+	"$basetexture" "materials/oylsister/ping"
+	"$translucent" 1
+	"$ignorez" 1
+	"$spriteorientation" "vp_parallel"
+	"$spriteorigin" "[ 0.50 0.50 ]"
+}
