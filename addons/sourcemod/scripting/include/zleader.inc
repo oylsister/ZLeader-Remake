@@ -21,7 +21,12 @@ forward void Leader_RemoveClientLeader(int client);
 #define MK_NOHUG 3
 #define MK_PING 4
 
-#define MK_TOTAL (MK_NORMAL + MK_DEFEND + MK_ZMTP + MK_NOHUG + MK_PING)
+#define MK_TOTAL 5 // 5 Markers Types
+
+#define MAX_MARKERS 33 // Each Markers Type value * 3
+#define MAX_INDEX (MK_TOTAL * MAX_MARKERS * MK_TOTAL)
+
+#define ENTITIES_PER_MK 3
 
 enum ResignReason
 {
