@@ -2797,12 +2797,12 @@ stock Action Timer_RemoveEdict(Handle timer, DataPack pack) {
 public void SourceComms_OnBlockAdded(int client, int target, int time, int type, char[] reason) {
 	// Check for mute/silence type (1 = Mute, 3 = Silence)
 	if (type == 1 || type == 3) {
-		if (IsPossibleLeader(client)) {
-			MCE_RemoveNomination(client);
+		if (IsPossibleLeader(target)) {
+			MCE_RemoveNomination(target);
 		}
 
-		if (IsClientLeader(client)) {
-			RemoveLeader(client, R_ADMINFORCED, true);
+		if (IsClientLeader(target)) {
+			RemoveLeader(target, R_ADMINFORCED, true);
 		}
 	}
 }
@@ -2810,7 +2810,7 @@ public void SourceComms_OnBlockAdded(int client, int target, int time, int type,
 public void SourceComms_OnBlockRemoved(int client, int target, int type, char[] reason) {
 	// Check for (4) unmute - (6) unsilence  - (14) temp mute removed - (16) temp silence removed
 	if (type == 4 || type == 6 || type == 14 || type == 16) {
-		Reset_ClientResigned(client);
+		Reset_ClientResigned(target);
 	}
 }
 #endif
