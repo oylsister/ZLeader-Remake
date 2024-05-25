@@ -68,6 +68,19 @@
 		"en"		"Leader has to be alive human!"
 		"ru"		"Лидер должен быть за живых людей!"
 	}
+
+	"Leader should not be muted"
+	{
+		"en"		"Leader should not be muted!"
+		"ru"		"Лидер не должен быть замучен!"
+	}
+
+	"Leader was resigned by Admin"
+	{
+		"#format"	"{1:N}" 
+		"en"		"{1} was resigned by Admin, and can't be leader."
+		"ru"		"{1} был снят администратором и не может быть лидером."
+	}
 	
 	"Leader cache refreshed"
 	{
@@ -128,10 +141,17 @@
 		"ru"		"{lightblue}{1}{default} стал лидером {darkred}[{orange}{2}{darkred}]"
 	}
 	
-	 "Cooldown Ping"
+	"Cooldown Ping"
 	{
-   	 	"#format"	"{1:d}"
+		"#format"	"{1:d}"
 		"en"		"Cannot ping. Ping is on cooldown. {red}({1} seconds)"
+		"ru"		"Нельзя пинговать. Пинг в перезарядке. {red}({1} секунд)"
+	}
+
+	"Edicts Limit"
+	{
+		"en"		"Action canceled. Server reached edicts limit. Please try again later.."
+		"ru"		"Действие отменено. Сервер достиг лимита edicts. Пожалуйста, попробуйте позже.."
 	}
 
 	// Remove Reason
@@ -175,6 +195,13 @@
 		"#format"	"{1:s},{2:N}"
 		"en"		"{orange}Leader {darkred}[{orange}{1}{darkred}] {olive}{2}{default} get infected and got resigned!"
 		"ru"		"{orange}Лидер {darkred}[{orange}{1}{darkred}] {olive}{2}{default} заразился и был снят!"
+	}
+
+	"Marker Max Limit"
+	{
+		"#format"	"{1:d}"
+		"en"		"You have reached the limit of {1} active markers."
+		"ru"		"Вы достигли лимита в {1} активных маркеров."
 	}
 
 
