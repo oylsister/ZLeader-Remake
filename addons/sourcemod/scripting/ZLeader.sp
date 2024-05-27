@@ -135,7 +135,7 @@ public Plugin myinfo = {
 	name = "ZLeader Remake",
 	author = "Original by AntiTeal, nuclear silo, CNTT, colia || Remake by Oylsister, .Rushaway",
 	description = "Allows for a human to be a leader, and give them special functions with it.",
-	version = "3.5.0",
+	version = "3.5.1",
 	url = "https://github.com/oylsister/ZLeader-Remake"
 };
 
@@ -1370,11 +1370,6 @@ public void CreatePing(int client) {
 		return;
 	}
 
-	if (g_iMaximumMarker > 0 && g_iMarkerInUse[client] >= g_iMaximumMarker) {
-		CPrintToChat(client, "%T %T", "Prefix", client, "Marker Max Limit", client, g_iMaximumMarker);
-		return;
-	}
-
 	g_bPingBeamActive[client] = !g_bPingBeamActive[client];
 	PerformPingBeam(client);
 }
@@ -1403,8 +1398,6 @@ stock void KillActivePingBeam(int client) {
 	if (g_iClientMarker[MK_PING][client] != -1) {
 		KillPingBeam(client);
 		RemoveMarker(client, MK_PING);
-		if (g_iMarkerInUse[client] > 0)
-			g_iMarkerInUse[client]--;
 	}
 }
 
@@ -1698,6 +1691,8 @@ stock void RemoveAllMarkers(int client) {
 	ForceRemoveMarkers(client, MK_ZMTP);
 	ForceRemoveMarkers(client, MK_PING);
 
+	g_iMarkerInUse[client] = 0;
+
 	if (g_bPingBeamActive[client])
 		KillPingBeam(client);
 
@@ -1734,7 +1729,7 @@ public void RemoveMarker(int client, int type) {
 }
 
 public void SpawnMarker(int client, int type) {
-	if (g_iMaximumMarker > 0 && g_iMarkerInUse[client] >= g_iMaximumMarker) {
+	if (type != MK_PING && g_iMaximumMarker > 0 && g_iMarkerInUse[client] >= g_iMaximumMarker) {
 		CPrintToChat(client, "%T %T", "Prefix", client, "Marker Max Limit", client, g_iMaximumMarker);
 		return;
 	}
@@ -1770,21 +1765,14 @@ public void SpawnMarker(int client, int type) {
 
 	g_iClientMarker[type][client] = SpawnAimMarker(client, g_LeaderData[slot].L_MarkerMDL, type);
 
-	bool bThisIsFine = true;
-	g_iMarkerInUse[client]++;
+	// Only increase the counter if the marker is successfully spawned
+	if (g_iMarkerEntities[type][client] != -1 && g_iNeonEntities[type][client] != -1 && g_iClientMarker[type][client] != -1 && type != MK_PING)
+		g_iMarkerInUse[client]++;
 
-	// Oops! Something is wrong! An entity was not created, decrease the number of marker in use
-	if (g_iMarkerEntities[type][client] == -1 || g_iNeonEntities[type][client] == -1 || g_iClientMarker[type][client] == -1) {
-		g_iMarkerInUse[client]--;
-		bThisIsFine = false;
-	}
-
-	// If this is fine, this one will decrease the number of marker in use
-	// But we always let the Verify function running to make sure the marker will be removed
-	VerifyAutoRemove(client, g_iClientMarker[type][client], type, bThisIsFine);
+	// Let the Verify function running to make sure the marker will be removed
+	VerifyAutoRemove(client, g_iClientMarker[type][client], type);
 	VerifyAutoRemove(client, g_iMarkerEntities[type][client], type);
-	if (type != MK_PING)
-		VerifyAutoRemove(client, g_iNeonEntities[type][client], type);
+	VerifyAutoRemove(client, g_iNeonEntities[type][client], type, true);
 }
 
 public int SpawnAimMarker(int client, char[] model, int type) {
@@ -2707,22 +2695,36 @@ public int ResignConfirmMenuHandler(Menu menu, MenuAction action, int param1, in
 ||  DRY
 ============================================================================ */
 stock void GenerateTargetName(int client, char[] sTargetName, int size, int type) {
-    FormatEx(sTargetName, size, "%s%s", g_sMarkerTypes[type], g_sSteamIDs64[client]);
+	FormatEx(sTargetName, size, "%s%s", g_sMarkerTypes[type], g_sSteamIDs64[client]);
 }
 
 stock void ForceRemoveMarkers(int client, int type) {
 	char sTargetName[128];
 	GenerateTargetName(client, sTargetName, sizeof(sTargetName), type);
 
-	int iCounter = INVALID_ENT_REFERENCE;
-	for (int entityType = 0; entityType < ENTITIES_PER_MK; entityType++) {
-		while ((iCounter = FindEntityByTargetname(INVALID_ENT_REFERENCE, sTargetName, g_sEntityTypes[entityType])) != INVALID_ENT_REFERENCE)
-			SafelyKillEntity(iCounter);
+	for (int i = 0; i < ENTITIES_PER_MK; i++) {
+		RemoveMarkersByType(sTargetName, g_sEntityTypes[i]);
 	}
 }
+
+stock void RemoveMarkersByType(const char[] sTargetName, const char[] sEntityType) {
+	int iCounter = INVALID_ENT_REFERENCE;
+	while ((iCounter = FindEntityByTargetname(INVALID_ENT_REFERENCE, sTargetName, sEntityType)) != INVALID_ENT_REFERENCE)
+		SafelyKillEntity(iCounter);
+}
+
 stock void SafelyKillEntity(int Ent) {
-	if (Ent > 0 && IsValidEdict(Ent))
+	if (Ent > 0 && IsValidEdict(Ent)) {
+		char sClass[64], sTargetname[64];
+		GetEntityClassname(Ent, sClass, sizeof(sClass));
+		GetEntPropString(Ent, Prop_Data, "m_iName", sTargetname, sizeof(sTargetname));
+
+		if (sTargetname[0] == '\0' && strcmp(sClass, "env_sprite") != 0 && strcmp(sClass, "light_dynamic") != 0 && strcmp(sClass, "prop_dynamic") != 0)
+			return;
+
+		// LogMessage("Removing entity %d (%s) with targetname %s", Ent, sClass, sTargetname);
 		AcceptEntityInput(Ent, "Kill");
+	}
 }
 
 stock bool IsTargetMuted(int target) {
@@ -2783,7 +2785,7 @@ stock Action Timer_RemoveEdict(Handle timer, DataPack pack) {
 
 	RemoveMarker(client, type);
 
-	if (bDeductUse && g_iMarkerInUse[client] > 0)
+	if (bDeductUse && type != MK_PING)
 		g_iMarkerInUse[client]--;
 
 	SafelyKillEntity(iEnt);
