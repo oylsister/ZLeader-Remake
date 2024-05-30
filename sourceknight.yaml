@@ -45,6 +45,13 @@ project:
       - source: /addons
         dest: /addons
 
+    - name: sourcebans-pp
+      type: git
+      repo: https://github.com/sbpp/sourcebans-pp
+      unpack:
+      - source: /game/addons
+        dest: /addons
+
 
   root: /
   output: /addons/sourcemod/plugins
