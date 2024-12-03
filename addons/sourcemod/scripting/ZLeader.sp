@@ -135,7 +135,7 @@ public Plugin myinfo = {
 	name = "ZLeader Remake",
 	author = "Original by AntiTeal, nuclear silo, CNTT, colia || Remake by Oylsister, .Rushaway",
 	description = "Allows for a human to be a leader, and give them special functions with it.",
-	version = "3.5.1",
+	version = "3.5.5",
 	url = "https://github.com/oylsister/ZLeader-Remake"
 };
 
@@ -527,6 +527,9 @@ public void ReadClientCookies(int client) {
 }
 
 public void SetClientCookies(int client) {
+	if (!client || !IsClientInGame(client) || IsFakeClient(client))
+		return;
+
 	char sValue[8];
 
 	FormatEx(sValue, sizeof(sValue), "%i", g_bShorcut[client]);
@@ -1283,8 +1286,8 @@ stock void CreateTrail(int client) {
 
 stock void KillTrail(int client) {
 	if (g_TrailModel[client] > MaxClients && IsValidEdict(g_TrailModel[client]))
-		SafelyKillEntity(g_TrailModel[client]);
-	
+		AcceptEntityInput(g_TrailModel[client], "Kill");
+
 	g_TrailModel[client] = 0;
 }
 
@@ -1479,7 +1482,7 @@ public void RemoveSpriteFollow(int client) {
 		GetEdictClassname(g_iSpriteFollow[client], m_szClassname, sizeof(m_szClassname));
 
 		if (strcmp("env_sprite", m_szClassname) == 0)
-			SafelyKillEntity(g_iSpriteFollow[client]);
+			AcceptEntityInput(g_iSpriteFollow[client], "Kill");
 	}
 
 	g_iSpriteFollow[client] = -1;
@@ -1490,7 +1493,7 @@ public void RemoveSpriteCodeName(int client) {
 		GetEdictClassname(g_iSpriteLeader[client], m_szClassname, sizeof(m_szClassname));
 
 		if (strcmp("env_sprite", m_szClassname) == 0)
-			SafelyKillEntity(g_iSpriteLeader[client]);
+			AcceptEntityInput(g_iSpriteLeader[client], "Kill");
 	}
 
 	g_iSpriteLeader[client] = -1;
@@ -1507,8 +1510,10 @@ public int AttachSprite(int client, char[] sprite, int position) {
 	}
 
 	char iTarget[16], sTargetname[64];
-
+	// Save original targetname
 	GetEntPropString(client, Prop_Data, "m_iName", sTargetname, sizeof(sTargetname));
+
+	// Set targetname to client
 	FormatEx(iTarget, sizeof(iTarget), "Client%d", client);
 	DispatchKeyValue(client, "targetname", iTarget);
 
@@ -1537,6 +1542,7 @@ public int AttachSprite(int client, char[] sprite, int position) {
 	SetVariantString(iTarget);
 	AcceptEntityInput(Ent, "SetParent", Ent, Ent, 0);
 
+	// Apply back original targetname
 	DispatchKeyValue(client, "targetname", sTargetname);
 
 	return Ent;
@@ -1872,7 +1878,7 @@ stock int SetupPlayerNeon(int client) {
 	// fOrigin[2] -= 10;
 
 	char sTargetName[64];
-	FormatEx(sTargetName, sizeof(sTargetName), "light_player_%s", g_sSteamIDs64[client]);
+	FormatEx(sTargetName, sizeof(sTargetName), "MK_light_player_%s", g_sSteamIDs64[client]);
 
 	int slot = GetLeaderIndexWithLeaderSlot(g_iClientLeaderSlot[client]);
 
@@ -1898,7 +1904,7 @@ stock int SetupPlayerNeon(int client) {
 
 stock int RemovePlayerNeon(int client) {
 	char sTargetName[64];
-	FormatEx(sTargetName, sizeof(sTargetName), "light_player_%s", g_sSteamIDs64[client]);
+	FormatEx(sTargetName, sizeof(sTargetName), "MK_light_player_%s", g_sSteamIDs64[client]);
 
 	int iCounter = FindEntityByTargetname(INVALID_ENT_REFERENCE, sTargetName, "light_dynamic");
 	SafelyKillEntity(iCounter);
@@ -1995,17 +2001,18 @@ public Action HookPlayerChat(int client, char[] command, int args) {
 		if (LeaderText[0] == '/' || LeaderText[0] == '@' || strlen(LeaderText) == 0 || IsChatTrigger())
 			return Plugin_Handled;
 	
-		char codename[32];
+		char codename[32], szMessage[255];
 		GetLeaderCodename(g_iClientLeaderSlot[client], codename, sizeof(codename));
 
 		if (g_bPlugin_ccc) {
-			CPrintToChatAll("{darkred}[{orange}Leader %s{darkred}] {%s}%N {default}: {%s}%s", 
+			FormatEx(szMessage, sizeof(szMessage), "{darkred}[{orange}Leader %s{darkred}] {%s}%N {default}: {%s}%s", 
 				codename, g_sColorName[client], client, g_sColorChat[client], LeaderText);
-			return Plugin_Handled;
 		} else {
-			CPrintToChatAll("{darkred}[{orange}Leader %s{darkred}] {teamcolor}%N {default}: {default}%s", codename, client, LeaderText);
-			return Plugin_Handled;
+			FormatEx(szMessage, sizeof(szMessage), "{darkred}[{orange}Leader %s{darkred}] {teamcolor}%N {default}: {default}%s", codename, client, LeaderText);
 		}
+
+		CPrintToChatAll(szMessage);
+		return Plugin_Handled;
 	}
 
 	return Plugin_Continue;
@@ -2520,7 +2527,7 @@ public bool Filter_NotLeaders(const char[] sPattern, Handle hClients) {
 
 public bool Filter_Leader(const char[] sPattern, Handle hClients) {
 	for (int i = 1; i <= MaxClients; i++) {
-		if (IsValidClient(i) && g_iCurrentLeader[i])
+		if (IsValidClient(i) && i < sizeof(g_iCurrentLeader) && g_iCurrentLeader[i])
 			PushArrayCell(hClients, i);
 	}
 	return true;
@@ -2717,9 +2724,12 @@ stock void SafelyKillEntity(int Ent) {
 	if (Ent > 0 && IsValidEdict(Ent)) {
 		char sClass[64], sTargetname[64];
 		GetEntityClassname(Ent, sClass, sizeof(sClass));
-		GetEntPropString(Ent, Prop_Data, "m_iName", sTargetname, sizeof(sTargetname));
 
-		if (sTargetname[0] == '\0' && strcmp(sClass, "env_sprite") != 0 && strcmp(sClass, "light_dynamic") != 0 && strcmp(sClass, "prop_dynamic") != 0)
+		if (strcmp(sClass, "env_sprite") != 0 && strcmp(sClass, "light_dynamic") != 0 && strcmp(sClass, "prop_dynamic") != 0)
+			return;
+
+		GetEntPropString(Ent, Prop_Data, "m_iName", sTargetname, sizeof(sTargetname));
+		if (sTargetname[0] == '\0' || StrContains(sTargetname, "MK_", false) == -1)
 			return;
 
 		// LogMessage("Removing entity %d (%s) with targetname %s", Ent, sClass, sTargetname);
