@@ -92,6 +92,9 @@ Handle g_hShortcut = INVALID_HANDLE,
 	g_hSetClientLeaderForward = INVALID_HANDLE,
 	g_hRemoveClientLeaderForward = INVALID_HANDLE;
 
+GlobalForward g_hForward_StatusOK;
+GlobalForward g_hForward_StatusNotOK;
+
 enum struct LeaderData {
 	char L_Codename[48];
 	int L_Slot;
@@ -135,7 +138,7 @@ public Plugin myinfo = {
 	name = "ZLeader Remake",
 	author = "Original by AntiTeal, nuclear silo, CNTT, colia || Remake by Oylsister, .Rushaway",
 	description = "Allows for a human to be a leader, and give them special functions with it.",
-	version = "3.5.5",
+	version = ZLeader_VERSION,
 	url = "https://github.com/oylsister/ZLeader-Remake"
 };
 
@@ -146,6 +149,12 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 	CreateNative("ZL_GetClientLeaderSlot", Native_GetClientLeaderSlot);
 	CreateNative("ZL_IsLeaderSlotFree", Native_IsLeaderSlotFree);
 	CreateNative("ZL_IsPossibleLeader", Native_IsPossibleLeader);
+
+	g_hForward_StatusOK = CreateGlobalForward("ZLeader_OnPluginOK", ET_Ignore);
+	g_hForward_StatusNotOK = CreateGlobalForward("ZLeader_OnPluginNotOK", ET_Ignore);
+
+	g_hSetClientLeaderForward = CreateGlobalForward("Leader_SetClientLeader", ET_Ignore, Param_Cell, Param_String);
+	g_hRemoveClientLeaderForward = CreateGlobalForward("Leader_RemoveClientLeader", ET_Ignore, Param_Cell, Param_Cell);
 
 	MarkNativeAsOptional("CCC_GetColorKey");
 	RegPluginLibrary("zleader");
@@ -235,10 +244,6 @@ public void OnPluginStart() {
 	AddMultiTargetFilter("@!leaders", Filter_NotLeaders, "Everyone but Possible Leaders", false);
 	AddMultiTargetFilter("@leader", Filter_Leader, "Current Leader", false);
 	AddMultiTargetFilter("@!leader", Filter_NotLeader, "Every one but the Current Leader", false);
-
-	/* FORWARDS */
-	g_hSetClientLeaderForward = CreateGlobalForward("Leader_SetClientLeader", ET_Ignore, Param_Cell, Param_String);
-	g_hRemoveClientLeaderForward = CreateGlobalForward("Leader_RemoveClientLeader", ET_Ignore, Param_Cell);
 
 	/* Late load */
 	for (int i = 1; i < MaxClients; i++) {
@@ -408,6 +413,8 @@ void PrecacheConfig() {
 ||  REMOVE ALL FILTERS / COMMAND LISTENER / CLOSE ALL HANDLES
 ============================================================================ */
 public void OnPluginEnd() {
+	SendForward_NotAvailable();
+
 	RemoveMultiTargetFilter("@leaders", Filter_Leaders);
 	RemoveMultiTargetFilter("@!leaders", Filter_NotLeaders);
 	RemoveMultiTargetFilter("@leader", Filter_Leader);
@@ -429,12 +436,23 @@ public void OnPluginEnd() {
 ||  EXTERNAL PLUGINS
 ============================================================================ */
 public void OnAllPluginsLoaded() {
+	SendForward_Available();
+
 	g_bPlugin_vipcore = LibraryExists("vip_core");
 	g_bPlugin_ccc = LibraryExists("ccc");
 	g_Plugin_BaseComm = LibraryExists("basecomm");
 	g_bPlugin_SourceCommsPP = LibraryExists("sourcecomms++");
 	g_bPlugin_MCE = LibraryExists("mapchooser");
 }
+
+public void OnPluginPauseChange(bool pause)
+{
+	if (pause)
+		SendForward_NotAvailable();
+	else
+		SendForward_Available();
+}
+
 public void OnLibraryRemoved(const char[] name) {
 	if (strcmp(name, "vip_core", false) == 0)
 		g_bPlugin_vipcore = false;
@@ -2225,6 +2243,7 @@ void RemoveLeader(int client, ResignReason reason, bool announce = true) {
 
 	Call_StartForward(g_hRemoveClientLeaderForward);
 	Call_PushCell(client);
+	Call_PushCell(reason);
 	Call_Finish();
 
 	if (reason == R_ADMINFORCED)
@@ -2919,4 +2938,14 @@ stock void Reset_ClientMarkerInUse(int client) {
 
 stock void Reset_ClientResigned(int client) {
 	g_bResignedByAdmin[client] = false;
+}
+
+stock void SendForward_Available() {
+	Call_StartForward(g_hForward_StatusOK);
+	Call_Finish();
+}
+
+stock void SendForward_NotAvailable() {
+	Call_StartForward(g_hForward_StatusNotOK);
+	Call_Finish();
 }
