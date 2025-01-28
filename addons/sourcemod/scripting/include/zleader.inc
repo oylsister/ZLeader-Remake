@@ -3,26 +3,11 @@
 #endif
 #define _zleader_included
 
-#define ZLeader_V_MAJOR   3
-#define ZLeader_V_MINOR   6
-#define ZLeader_V_PATCH   0
+#define ZLeader_V_MAJOR   "3"
+#define ZLeader_V_MINOR   "6"
+#define ZLeader_V_PATCH   "0"
 
-#define ZLeader_VERSION   "3.6.0"
-
-/**
- * Called when the plugin becomes available.
- * 
- * @noreturn
- */
-forward void ZLeader_OnPluginOK();
-
-/**
- * Called when the plugin becomes unavailable.
- * This can happen when the plugin is reloaded or unloaded.
- * 
- * @noreturn
- */
-forward void ZLeader_OnPluginNotOK();
+#define ZLeader_VERSION   ZLeader_V_MAJOR..."."...ZLeader_V_MINOR..."."...ZLeader_V_PATCH
 
 /**
  * Called when a player becomes leader.
