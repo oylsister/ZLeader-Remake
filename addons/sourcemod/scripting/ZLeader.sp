@@ -135,7 +135,7 @@ public Plugin myinfo = {
 	name = "ZLeader Remake",
 	author = "Original by AntiTeal, nuclear silo, CNTT, colia || Remake by Oylsister, .Rushaway",
 	description = "Allows for a human to be a leader, and give them special functions with it.",
-	version = "3.5.5",
+	version = ZLeader_VERSION,
 	url = "https://github.com/oylsister/ZLeader-Remake"
 };
 
@@ -146,6 +146,9 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 	CreateNative("ZL_GetClientLeaderSlot", Native_GetClientLeaderSlot);
 	CreateNative("ZL_IsLeaderSlotFree", Native_IsLeaderSlotFree);
 	CreateNative("ZL_IsPossibleLeader", Native_IsPossibleLeader);
+
+	g_hSetClientLeaderForward = CreateGlobalForward("Leader_SetClientLeader", ET_Ignore, Param_Cell, Param_String);
+	g_hRemoveClientLeaderForward = CreateGlobalForward("Leader_RemoveClientLeader", ET_Ignore, Param_Cell, Param_Cell);
 
 	MarkNativeAsOptional("CCC_GetColorKey");
 	RegPluginLibrary("zleader");
@@ -235,10 +238,6 @@ public void OnPluginStart() {
 	AddMultiTargetFilter("@!leaders", Filter_NotLeaders, "Everyone but Possible Leaders", false);
 	AddMultiTargetFilter("@leader", Filter_Leader, "Current Leader", false);
 	AddMultiTargetFilter("@!leader", Filter_NotLeader, "Every one but the Current Leader", false);
-
-	/* FORWARDS */
-	g_hSetClientLeaderForward = CreateGlobalForward("Leader_SetClientLeader", ET_Ignore, Param_Cell, Param_String);
-	g_hRemoveClientLeaderForward = CreateGlobalForward("Leader_RemoveClientLeader", ET_Ignore, Param_Cell);
 
 	/* Late load */
 	for (int i = 1; i < MaxClients; i++) {
@@ -435,6 +434,7 @@ public void OnAllPluginsLoaded() {
 	g_bPlugin_SourceCommsPP = LibraryExists("sourcecomms++");
 	g_bPlugin_MCE = LibraryExists("mapchooser");
 }
+
 public void OnLibraryRemoved(const char[] name) {
 	if (strcmp(name, "vip_core", false) == 0)
 		g_bPlugin_vipcore = false;
@@ -2225,6 +2225,7 @@ void RemoveLeader(int client, ResignReason reason, bool announce = true) {
 
 	Call_StartForward(g_hRemoveClientLeaderForward);
 	Call_PushCell(client);
+	Call_PushCell(reason);
 	Call_Finish();
 
 	if (reason == R_ADMINFORCED)

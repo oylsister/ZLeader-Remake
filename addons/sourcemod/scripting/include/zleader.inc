@@ -3,8 +3,29 @@
 #endif
 #define _zleader_included
 
+#define ZLeader_V_MAJOR   "3"
+#define ZLeader_V_MINOR   "6"
+#define ZLeader_V_PATCH   "0"
+
+#define ZLeader_VERSION   ZLeader_V_MAJOR..."."...ZLeader_V_MINOR..."."...ZLeader_V_PATCH
+
+/**
+ * Called when a player becomes leader.
+ *
+ * @param 		client The client index of the player who became leader.
+ * @param 		codename The codename of the leader.
+ * @noreturn
+ */
 forward void Leader_SetClientLeader(int client, char[] sReason);
-forward void Leader_RemoveClientLeader(int client);
+
+/**
+ * Called when a player loses leader.
+ *
+ * @param 		client The client index of the player who lost leader.
+ * @param 		reason ResignReason Code of the leader.
+ * @noreturn
+ */
+forward void Leader_RemoveClientLeader(int client, int reason);
 
 #define MAXLEADER 5
 #define MAXEDICTS (GetMaxEntities() - 150)
@@ -38,17 +59,66 @@ enum ResignReason
 	R_INFECTED = 5
 }
 
+/**
+ * Sets a client as leader in the specified slot.
+ *
+ * @param client        Client index
+ * @param slot          Leader slot to assign
+ * @noreturn
+ * @error              Invalid client index or client not in game
+ */
 native void ZL_SetLeader(int client, int slot);
+
+/**
+ * Checks if a client is currently a leader.
+ *
+ * @param client        Client index
+ * @return             True if client is leader, false otherwise
+ * @error              Invalid client index
+ */
 native bool ZL_IsClientLeader(int client);
+
+/**
+ * Removes leader status from a client.
+ *
+ * @param client        Client index
+ * @param reason        Reason for removal
+ * @param announce      Whether to announce the removal
+ * @noreturn
+ * @error              Invalid client index or client not leader
+ */
 native void ZL_RemoveLeader(int client, ResignReason reason, bool announce);
+
+/**
+ * Gets the leader slot assigned to a client.
+ *
+ * @param client        Client index
+ * @return             Leader slot number, or -1 if not leader
+ * @error              Invalid client index or client not leader
+ */
 native int ZL_GetClientLeaderSlot(int client);
+
+/**
+ * Checks if a leader slot is available.
+ *
+ * @param slot          Slot number to check
+ * @return             True if slot is free, false otherwise
+ */
 native bool ZL_IsLeaderSlotFree(int slot);
+
+/**
+ * Checks if a client is eligible to become leader.
+ *
+ * @param client        Client index
+ * @return             True if client can be leader, false otherwise
+ * @error              Invalid client index
+ */
 native bool ZL_IsPossibleLeader(int client);
 
 public SharedPlugin __pl_zleader = 
 {
 	name = "zleader",
-	file = "zleader.smx",
+	file = "ZLeader.smx",
 #if defined REQUIRE_PLUGIN
 	required = 1,
 #else
