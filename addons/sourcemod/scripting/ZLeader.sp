@@ -92,9 +92,6 @@ Handle g_hShortcut = INVALID_HANDLE,
 	g_hSetClientLeaderForward = INVALID_HANDLE,
 	g_hRemoveClientLeaderForward = INVALID_HANDLE;
 
-GlobalForward g_hForward_StatusOK;
-GlobalForward g_hForward_StatusNotOK;
-
 enum struct LeaderData {
 	char L_Codename[48];
 	int L_Slot;
@@ -149,9 +146,6 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 	CreateNative("ZL_GetClientLeaderSlot", Native_GetClientLeaderSlot);
 	CreateNative("ZL_IsLeaderSlotFree", Native_IsLeaderSlotFree);
 	CreateNative("ZL_IsPossibleLeader", Native_IsPossibleLeader);
-
-	g_hForward_StatusOK = CreateGlobalForward("ZLeader_OnPluginOK", ET_Ignore);
-	g_hForward_StatusNotOK = CreateGlobalForward("ZLeader_OnPluginNotOK", ET_Ignore);
 
 	g_hSetClientLeaderForward = CreateGlobalForward("Leader_SetClientLeader", ET_Ignore, Param_Cell, Param_String);
 	g_hRemoveClientLeaderForward = CreateGlobalForward("Leader_RemoveClientLeader", ET_Ignore, Param_Cell, Param_Cell);
@@ -413,8 +407,6 @@ void PrecacheConfig() {
 ||  REMOVE ALL FILTERS / COMMAND LISTENER / CLOSE ALL HANDLES
 ============================================================================ */
 public void OnPluginEnd() {
-	SendForward_NotAvailable();
-
 	RemoveMultiTargetFilter("@leaders", Filter_Leaders);
 	RemoveMultiTargetFilter("@!leaders", Filter_NotLeaders);
 	RemoveMultiTargetFilter("@leader", Filter_Leader);
@@ -436,21 +428,11 @@ public void OnPluginEnd() {
 ||  EXTERNAL PLUGINS
 ============================================================================ */
 public void OnAllPluginsLoaded() {
-	SendForward_Available();
-
 	g_bPlugin_vipcore = LibraryExists("vip_core");
 	g_bPlugin_ccc = LibraryExists("ccc");
 	g_Plugin_BaseComm = LibraryExists("basecomm");
 	g_bPlugin_SourceCommsPP = LibraryExists("sourcecomms++");
 	g_bPlugin_MCE = LibraryExists("mapchooser");
-}
-
-public void OnPluginPauseChange(bool pause)
-{
-	if (pause)
-		SendForward_NotAvailable();
-	else
-		SendForward_Available();
 }
 
 public void OnLibraryRemoved(const char[] name) {
@@ -2938,14 +2920,4 @@ stock void Reset_ClientMarkerInUse(int client) {
 
 stock void Reset_ClientResigned(int client) {
 	g_bResignedByAdmin[client] = false;
-}
-
-stock void SendForward_Available() {
-	Call_StartForward(g_hForward_StatusOK);
-	Call_Finish();
-}
-
-stock void SendForward_NotAvailable() {
-	Call_StartForward(g_hForward_StatusNotOK);
-	Call_Finish();
 }
