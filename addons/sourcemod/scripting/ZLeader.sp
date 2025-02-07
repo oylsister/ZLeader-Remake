@@ -240,10 +240,10 @@ public void OnPluginStart() {
 	AddMultiTargetFilter("@!leader", Filter_NotLeader, "Every one but the Current Leader", false);
 
 	/* Late load */
+	char sSteam32ID[32];
 	for (int i = 1; i < MaxClients; i++) {
-		if (IsClientConnected(i)) {
-			OnClientPutInServer(i);
-		}
+		if (IsClientInGame(i) && !IsFakeClient(i) && IsClientAuthorized(i) && GetClientAuthId(i, AuthId_Steam2, sSteam32ID, sizeof(sSteam32ID)))
+			OnClientAuthorized(i, sSteam32ID);
 	}
 }
 
@@ -439,32 +439,33 @@ public void OnLibraryRemoved(const char[] name) {
 	if (strcmp(name, "vip_core", false) == 0)
 		g_bPlugin_vipcore = false;
 
-	if (strcmp(name, "ccc", false) == 0)
+	else if (strcmp(name, "ccc", false) == 0)
 		g_bPlugin_ccc = false;
 
-	if (strcmp(name, "basecomm", false) == 0)
+	else if (strcmp(name, "basecomm", false) == 0)
 		g_Plugin_BaseComm = false;
 
-	if (strcmp(name, "sourcecomms++", false) == 0)
+	else if (strcmp(name, "sourcecomms++", false) == 0)
 		g_bPlugin_SourceCommsPP = false;
 
-	if (strcmp(name, "mapchooser", false) == 0)
+	else if (strcmp(name, "mapchooser", false) == 0)
 		g_bPlugin_MCE = false;
 }
+
 public void OnLibraryAdded(const char[] name) {
 	if (strcmp(name, "vip_core", false) == 0)
 		g_bPlugin_vipcore = true;
 
-	if (strcmp(name, "ccc", false) == 0)
+	else if (strcmp(name, "ccc", false) == 0)
 		g_bPlugin_ccc = true;
 
-	if (strcmp(name, "basecomm", false) == 0)
+	else if (strcmp(name, "basecomm", false) == 0)
 		g_Plugin_BaseComm = true;
 
-	if (strcmp(name, "sourcecomms++", false) == 0)
+	else if (strcmp(name, "sourcecomms++", false) == 0)
 		g_bPlugin_SourceCommsPP = true;
 
-	if (strcmp(name, "mapchooser", false) == 0)
+	else if (strcmp(name, "mapchooser", false) == 0)
 		g_bPlugin_MCE = true;
 }
 
@@ -494,15 +495,18 @@ public void OnMapStart() {
 /* =========================================================================
 ||  CLIENT CONNECTING (Index, Cookie, ..)
 ============================================================================ */
-public void OnClientPutInServer(int client) {
+public void OnClientAuthorized(int client, const char[] auth) {
+
+	if (IsFakeClient(client))
+		return;
+
 	Reset_PlayerState(client);
 
 	if (AreClientCookiesCached(client))
 		ReadClientCookies(client);
 
-	char sSteamID2[32];
-	GetClientAuthId(client, AuthId_Steam2, sSteamID2, sizeof(sSteamID2), false);
-	FormatEx(g_sSteamIDs2[client], sizeof(g_sSteamIDs2[]), "%s", sSteamID2);
+	// Store the SteamID2 and SteamID64
+	FormatEx(g_sSteamIDs2[client], sizeof(g_sSteamIDs2[]), "%s", auth);
 
 	char sSteamID64[64];
 	GetClientAuthId(client, AuthId_SteamID64, sSteamID64, sizeof(sSteamID64), false);
