@@ -225,6 +225,7 @@ public void OnPluginStart() {
 	HookEvent("player_team", OnPlayerTeam, EventHookMode_Post);
 	HookEvent("player_death", OnPlayerDeath, EventHookMode_Post);
 	HookEvent("round_end", OnRoundEnd);
+	HookEvent("round_start", OnRoundStart);
 	HookRadio();
 
 	/* COOKIES */
@@ -473,6 +474,7 @@ public void OnLibraryAdded(const char[] name) {
 ||  INITIAL SETUP (Cache, dl table, load cfg..)
 ============================================================================ */
 public void OnMapStart() {
+	Reset_AllLeaders();
 	LoadConfig();
 	LoadDownloadTable();
 	PrecacheConfig();
@@ -647,6 +649,11 @@ public void OnRoundEnd(Event event, const char[] name, bool dontBroadcast) {
 	CreateTimer(0.3, Timer_RoundEndClean, INVALID_HANDLE, TIMER_FLAG_NO_MAPCHANGE);
 	KillAllBeacons();
 	KillAllPingsBeam();
+}
+
+public void OnRoundStart(Event event, const char[] name, bool dontBroadcast) {
+	Reset_AllLeaders();
+	EnsureLeaderConsistency();
 }
 
 public Action Timer_RoundEndClean(Handle timer) {
@@ -2184,11 +2191,12 @@ void SetClientLeader(int client, int adminset = -1, int slot) {
 
 void RemoveLeader(int client, ResignReason reason, bool announce = true) {
 	char codename[32];
+	bool wasLeader = g_bClientLeader[client];
 	int slot = GetClientLeaderSlot(client);
+
 	GetLeaderCodename(slot, codename, sizeof(codename));
 
 	RemoveAllMarkers(client);
-
 	RemoveSpriteFollow(client);
 	RemoveSpriteCodeName(client);
 
@@ -2206,13 +2214,20 @@ void RemoveLeader(int client, ResignReason reason, bool announce = true) {
 		KillBeacon(client);
 	}
 
-	for (int i = 1; i <= MaxClients; i++) {
-		if (!IsClientInGame(i))
-			continue;
-			
-		if (GetClientFromSerial(g_iClientVoteWhom[i]) == client)
-			Reset_ClientVoteWho(i);
-	}
+	Reset_VotesForClient(client);
+	Reset_ClientFromLeaderSlots(client);
+
+	Reset_CurrentLeader(client);
+	Reset_CurrentLeaderSlot(client);
+	Reset_LeaderSlot(client);
+	Reset_ClientGetVoted(client);
+	Reset_ClientSprite(client);
+	Reset_ClientBeaconActive(client);
+	Reset_ClientPingBeamActive(client);
+	Reset_ClientTrailActive(client);
+
+	if (!wasLeader)
+		return;
 
 	Call_StartForward(g_hRemoveClientLeaderForward);
 	Call_PushCell(client);
@@ -2251,15 +2266,27 @@ void RemoveLeader(int client, ResignReason reason, bool announce = true) {
 			}
 		}
 	}
+}
 
-	Reset_CurrentLeader(client);
-	Reset_CurrentLeaderSlot(client);
-	Reset_LeaderSlot(client);
-	Reset_ClientGetVoted(client);
-	Reset_ClientSprite(client);
-	Reset_ClientBeaconActive(client);
-	Reset_ClientPingBeamActive(client);
-	Reset_ClientTrailActive(client);
+void EnsureLeaderConsistency() {
+	for (int client = 1; client <= MaxClients; client++) {
+		if (!IsClientInGame(client))
+			continue;
+
+		int slot = g_iClientLeaderSlot[client];
+		bool isLeader = g_bClientLeader[client];
+
+		if (isLeader) {
+			if (slot < 0 || slot >= g_iTotalLeader || g_iCurrentLeader[slot] != client) {
+				LogMessage("Inconsistent state: Client %d marked as leader but slot %d is invalid", client, slot);
+				RemoveLeader(client, R_ADMINFORCED, false);
+			}
+		} else if (slot >= 0 && slot < g_iTotalLeader && g_iCurrentLeader[slot] == client) {
+			LogMessage("Inconsistent state: Client %d in slot %d but not marked as leader", client, slot);
+			Reset_LeaderSlotByIndex(slot);
+			Reset_ClientLeaderSlot(client);
+		}
+	}
 }
 
 /* =========================================================================
@@ -2863,7 +2890,18 @@ stock void Reset_PlayerState(int client) {
 }
 
 stock void Reset_CurrentLeaderSlot(int client) {
-	g_iCurrentLeader[g_iClientLeaderSlot[client]] = -1;
+	int slot = g_iClientLeaderSlot[client];
+	Reset_ClientLeaderSlot(client);
+	Reset_LeaderSlotByIndex(slot);
+}
+
+stock void Reset_ClientLeaderSlot(int client) {
+	g_iClientLeaderSlot[client] = -1;
+}
+
+stock void Reset_LeaderSlotByIndex(int slot) {
+	if (slot >= 0 && slot < g_iTotalLeader)
+		g_iCurrentLeader[slot] = -1;
 }
 
 stock void Reset_LeaderSlot(int client) {
@@ -2911,4 +2949,43 @@ stock void Reset_ClientMarkerInUse(int client) {
 
 stock void Reset_ClientResigned(int client) {
 	g_bResignedByAdmin[client] = false;
+}
+
+void Reset_AllLeaders() {
+	for (int i = 0; i < g_iTotalLeader; i++) {
+		int client = g_iCurrentLeader[i];
+		if (client != -1) {
+			if (IsValidClient(client)) {
+				RemoveLeader(client, R_ADMINFORCED, false);
+			} else {
+				Reset_LeaderSlotByIndex(i);
+			}
+		}
+	}
+
+	for (int i = 1; i <= MaxClients; i++) {
+		if (IsClientInGame(i)) {
+			if (g_bClientLeader[i]) {
+				RemoveLeader(i, R_ADMINFORCED, false);
+			}
+			Reset_ClientVoteWho(i);
+			Reset_ClientNextVote(i);
+		}
+	}
+}
+
+void Reset_VotesForClient(int client) {
+	for (int i = 1; i <= MaxClients; i++) {
+		if (IsClientInGame(i) && GetClientFromSerial(g_iClientVoteWhom[i]) == client) {
+			Reset_ClientVoteWho(i);  
+		}
+	}
+}
+
+void Reset_ClientFromLeaderSlots(int client) {
+	for (int i = 0; i < g_iTotalLeader; i++) {
+		if (g_iCurrentLeader[i] == client) {
+			g_iCurrentLeader[i] = -1;
+		}
+	}
 }
