@@ -71,8 +71,8 @@
 
 	"Leader should not be muted"
 	{
-		"en"		"Leader should not be muted!"
-		"ru"		"Лидер не должен быть замучен!"
+		"en"		"Leader should not have active comms punishment!"
+		"ru"		"Лидер не должен иметь активное наказание за общение!"
 	}
 
 	"Leader was resigned by Admin"

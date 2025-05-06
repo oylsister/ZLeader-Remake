@@ -722,7 +722,7 @@ public Action Command_Leader(int client, int args) {
 					CReplyToCommand(client, "%t %t", "Prefix", "It's Zombie");
 					return Plugin_Stop;
 				}
-				if (IsTargetMuted(client)) {
+				if (IsTargetMuted(client) || IsTargetGagged(client)) {
 					CReplyToCommand(client, "%T %T", "Prefix", client, "Leader should not be muted", client);
 					return Plugin_Stop;
 				}
@@ -787,7 +787,7 @@ public Action Command_Leader(int client, int args) {
 				CReplyToCommand(client, "%t %t", "Prefix", "Already Leader", target);
 				return Plugin_Handled;
 			}
-			if (IsTargetMuted(target)) {
+			if (IsTargetMuted(target) || IsTargetGagged(target)) {
 				CReplyToCommand(client, "%T %T", "Prefix", client, "Leader should not be muted", client);
 				return Plugin_Handled;
 			}
@@ -1096,7 +1096,7 @@ public Action Command_VoteLeader(int client, int args) {
 		return Plugin_Handled;
 	}
 
-	if (IsTargetMuted(target)) {
+	if (IsTargetMuted(target) || IsTargetGagged(target)) {
 		CReplyToCommand(client, "%T %T", "Prefix", client, "Leader should not be muted", client);
 		return Plugin_Handled;
 	}
@@ -2758,8 +2758,8 @@ stock void SafelyKillEntity(int Ent) {
 
 stock bool IsTargetMuted(int target) {
 	bool bIsMuted = false;
-	bool bBaseCommsPP= g_Plugin_BaseComm && CanTestFeatures() && GetFeatureStatus(FeatureType_Native, "BaseComm_IsClientMuted") == FeatureStatus_Available;
-	bool bSourceCommsPP= g_bPlugin_SourceCommsPP && CanTestFeatures() && GetFeatureStatus(FeatureType_Native, "SourceComms_GetClientMuteType") == FeatureStatus_Available;
+	bool bBaseCommsPP = g_Plugin_BaseComm && CanTestFeatures() && GetFeatureStatus(FeatureType_Native, "BaseComm_IsClientMuted") == FeatureStatus_Available;
+	bool bSourceCommsPP = g_bPlugin_SourceCommsPP && CanTestFeatures() && GetFeatureStatus(FeatureType_Native, "SourceComms_GetClientMuteType") == FeatureStatus_Available;
 	if (bBaseCommsPP)
 		bIsMuted = BaseComm_IsClientMuted(target);
 	else if (bSourceCommsPP) {
@@ -2768,6 +2768,20 @@ stock bool IsTargetMuted(int target) {
 	}
 
 	return bIsMuted;
+}
+
+stock bool IsTargetGagged(int target) {
+	bool bIsGagged = false;
+	bool bBaseCommsPP = g_Plugin_BaseComm && CanTestFeatures() && GetFeatureStatus(FeatureType_Native, "BaseComm_IsClientGagged") == FeatureStatus_Available;
+	bool bSourceCommsPP = g_bPlugin_SourceCommsPP && CanTestFeatures() && GetFeatureStatus(FeatureType_Native, "SourceComms_GetClientGagType") == FeatureStatus_Available;
+	if (bBaseCommsPP)
+		bIsGagged = BaseComm_IsClientGagged(target);
+	else if (bSourceCommsPP) {
+		int iComms = SourceComms_GetClientGagType(target);
+		bIsGagged = iComms != 0 ? true : false;
+	}
+
+	return bIsGagged;
 }
 
 stock void VerifyParentableSurface(int client, int Ent) {
@@ -2826,8 +2840,8 @@ stock Action Timer_RemoveEdict(Handle timer, DataPack pack) {
 ============================================================================ */
 #if defined _sourcecomms_included
 public void SourceComms_OnBlockAdded(int client, int target, int time, int type, char[] reason) {
-	// Check for mute/silence type (1 = Mute, 3 = Silence)
-	if (type == 1 || type == 3) {
+	// Check for mute/silence type (1 = Mute, 2 = Gag, 3 = Silence)
+	if (type == 1 || type == 2 || type == 3) {
 		if (IsPossibleLeader(target)) {
 			MCE_RemoveNomination(target);
 		}
