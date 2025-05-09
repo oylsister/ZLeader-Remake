@@ -1826,8 +1826,6 @@ public int SpawnAimMarker(int client, char[] model, int type) {
 	else
 		SetEntityRenderColor(Ent, g_LeaderData[slot].L_iColorZMTP[0], g_LeaderData[slot].L_iColorZMTP[1], g_LeaderData[slot].L_iColorZMTP[2], g_LeaderData[slot].L_iColorZMTP[3]);
 
-	SetEntProp(Ent, Prop_Send, "m_CollisionGroup", 1);
-
 	TeleportEntity(Ent, g_fPos, NULL_VECTOR, NULL_VECTOR);
 	VerifyParentableSurface(client, Ent);
 
