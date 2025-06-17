@@ -2528,7 +2528,7 @@ stock bool IsValidHex(char[] arg) {
 ============================================================================ */
 public bool Filter_Leaders(const char[] sPattern, Handle hClients) {
 	for (int i = 1; i <= MaxClients; i++) {
-		if (IsClientInGame(i) && !IsFakeClient(i) && (IsPossibleLeader(i) || g_iCurrentLeader[i]))
+		if (IsClientInGame(i) && !IsFakeClient(i) && (IsPossibleLeader(i) || (i < MAXLEADER && g_iCurrentLeader[i])))
 			PushArrayCell(hClients, i);
 	}
 	return true;
@@ -2536,7 +2536,7 @@ public bool Filter_Leaders(const char[] sPattern, Handle hClients) {
 
 public bool Filter_NotLeaders(const char[] sPattern, Handle hClients) {
 	for (int i = 1; i <= MaxClients; i++) {
-		if (IsClientInGame(i) && !IsFakeClient(i) && !IsPossibleLeader(i) && !g_iCurrentLeader[i])
+		if (IsClientInGame(i) && !IsFakeClient(i) && !IsPossibleLeader(i) && (i >= MAXLEADER || !g_iCurrentLeader[i]))
 			PushArrayCell(hClients, i);
 	}
 	return true;
@@ -2544,7 +2544,7 @@ public bool Filter_NotLeaders(const char[] sPattern, Handle hClients) {
 
 public bool Filter_Leader(const char[] sPattern, Handle hClients) {
 	for (int i = 1; i <= MaxClients; i++) {
-		if (IsValidClient(i) && i < sizeof(g_iCurrentLeader) && g_iCurrentLeader[i])
+		if (IsValidClient(i) && i < MAXLEADER && g_iCurrentLeader[i])
 			PushArrayCell(hClients, i);
 	}
 	return true;
@@ -2552,7 +2552,7 @@ public bool Filter_Leader(const char[] sPattern, Handle hClients) {
 
 public bool Filter_NotLeader(const char[] sPattern, Handle hClients) {
 	for (int i = 1; i <= MaxClients; i++) {
-		if (IsValidClient(i) && !g_iCurrentLeader[i])
+		if (IsValidClient(i) && (i >= MAXLEADER || !g_iCurrentLeader[i]))
 			PushArrayCell(hClients, i);
 	}
 	return true;
