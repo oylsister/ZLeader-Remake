@@ -56,7 +56,8 @@ int g_Serial_Beacon = 0,
 	g_iCooldownBeamPing[MAXPLAYERS + 1] = {0, ... },
 	g_iCurrentLeader[MAXLEADER] = {-1, -1, -1};
 
-bool g_bPlugin_ccc,
+bool g_bLate,
+	g_bPlugin_ccc,
 	g_bPlugin_vipcore,
 	g_Plugin_BaseComm,
 	g_bPlugin_SourceCommsPP,
@@ -138,6 +139,7 @@ public Plugin myinfo = {
 };
 
 public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max) {
+	g_bLate = late;
 	CreateNative("ZL_SetLeader", Native_SetLeader);
 	CreateNative("ZL_IsClientLeader", Native_IsClientLeader);
 	CreateNative("ZL_RemoveLeader", Native_RemoveLeader);
@@ -236,12 +238,17 @@ public void OnPluginStart() {
 	AddMultiTargetFilter("@leader", Filter_Leader, "Current Leader", false);
 	AddMultiTargetFilter("@!leader", Filter_NotLeader, "Every one but the Current Leader", false);
 
+	if (!g_bLate)
+		return;
+
 	/* Late load */
 	char sSteam32ID[32];
 	for (int i = 1; i < MaxClients; i++) {
 		if (IsClientInGame(i) && !IsFakeClient(i) && IsClientAuthorized(i) && GetClientAuthId(i, AuthId_Steam2, sSteam32ID, sizeof(sSteam32ID)))
 			OnClientAuthorized(i, sSteam32ID);
 	}
+
+	g_bLate = false;
 }
 
 public void OnConVarChanged(ConVar convar, const char[] oldValue, const char[] newValue) {
