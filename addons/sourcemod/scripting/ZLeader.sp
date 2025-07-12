@@ -86,9 +86,7 @@ char g_sEntityTypes[ENTITIES_PER_MK][32] = { "prop_dynamic", "light_dynamic", "e
 float g_fPos[3],
 	g_fMarkerTime; 
 
-Handle g_hShortcut = INVALID_HANDLE,
-	g_hPingSound = INVALID_HANDLE,
-	g_hMarkerPos = INVALID_HANDLE,
+Handle g_hZLeaderSettings = INVALID_HANDLE,
 	g_hSetClientLeaderForward = INVALID_HANDLE,
 	g_hRemoveClientLeaderForward = INVALID_HANDLE;
 
@@ -230,9 +228,7 @@ public void OnPluginStart() {
 
 	/* COOKIES */
 	SetCookieMenuItem(ZLeaderCookieHandler, 0, "ZLeader Settings");
-	g_hMarkerPos = RegClientCookie("zleader_makerpos", "ZLeader Marker Position", CookieAccess_Protected);
-	g_hShortcut = RegClientCookie("zleader_shortcut", "ZLeader ShortCut", CookieAccess_Protected);
-	g_hPingSound = RegClientCookie("zleader_pingsound", "ZLeader Ping Sound", CookieAccess_Protected);
+	g_hZLeaderSettings = RegClientCookie("zleader_settings", "ZLeader Settings", CookieAccess_Protected);
 
 	/* ADD FILTERS */
 	AddMultiTargetFilter("@leaders", Filter_Leaders, "Possible Leaders", false);
@@ -418,9 +414,7 @@ public void OnPluginEnd() {
 	RemoveCommandListener(QuickLeaderMenuCommand, "+lookatweapon");
 	RemoveCommandListener(QuickMarkerMenuCommand, "-lookatweapon");
 
-	CloseHandle(g_hShortcut);
-	CloseHandle(g_hPingSound);
-	CloseHandle(g_hMarkerPos);
+	CloseHandle(g_hZLeaderSettings);
 	CloseHandle(g_hSetClientLeaderForward);
 	CloseHandle(g_hRemoveClientLeaderForward);
 }
@@ -520,29 +514,71 @@ public void OnClientCookiesCached(int client) {
 	ReadClientCookies(client);
 }
 
+void ParseClientCookie(int client, bool &shortcut, bool &pingSound, int &markerPos) {
+	char buffer[64];
+	GetClientCookie(client, g_hZLeaderSettings, buffer, sizeof(buffer));
+
+	// Parse chain format: shortcut|pingsound|markerpos
+	if (buffer[0] != '\0') {
+		char parts[3][16];
+		int count = ExplodeString(buffer, "|", parts, 3, sizeof(parts[]));
+		
+		if (count >= 1) {
+			shortcut = view_as<bool>(StringToInt(parts[0]));
+		}
+		if (count >= 2) {
+			pingSound = view_as<bool>(StringToInt(parts[1]));
+		}
+		if (count >= 3) {
+			markerPos = StringToInt(parts[2]);
+		}
+	}
+	else {
+		// Default values
+		shortcut = true;
+		pingSound = true;
+		markerPos = MK_TYPE_CROSSHAIR;
+	}
+}
+
 public void ReadClientCookies(int client) {
-	char buffer[32];
-	GetClientCookie(client, g_hShortcut, buffer, 32);
-	g_bShorcut[client] = view_as<bool>(StringToInt(buffer)) || buffer[0] == '\0';
+	bool shortcut, pingSound;
+	int markerPos;
 
-	GetClientCookie(client, g_hPingSound, buffer, 32);
-	g_bPingSound[client] = view_as<bool>(StringToInt(buffer)) || buffer[0] == '\0';
+	ParseClientCookie(client, shortcut, pingSound, markerPos);
 
-	GetClientCookie(client, g_hMarkerPos, buffer, 32);
-	g_iMarkerPos[client] = (buffer[0] != '\0') ? StringToInt(buffer) : MK_TYPE_CROSSHAIR;
+	g_bShorcut[client] = shortcut;
+	g_bPingSound[client] = pingSound;
+	g_iMarkerPos[client] = markerPos;
 }
 
 public void SetClientCookies(int client) {
 	if (!client || !IsClientInGame(client) || IsFakeClient(client))
 		return;
 
-	char sValue[8];
+	// Read current cookie values
+	bool currentShortcut, currentPingSound;
+	int currentMarkerPos;
+	ParseClientCookie(client, currentShortcut, currentPingSound, currentMarkerPos);
 
-	FormatEx(sValue, sizeof(sValue), "%i", g_bShorcut[client]);
-	SetClientCookie(client, g_hShortcut, sValue);
+	// Check if values have changed
+	bool shortcutChanged = g_bShorcut[client] != currentShortcut;
+	bool pingSoundChanged = g_bPingSound[client] != currentPingSound;
+	bool markerPosChanged = g_iMarkerPos[client] != currentMarkerPos;
 
-	FormatEx(sValue, sizeof(sValue), "%i", g_iMarkerPos[client]);
-	SetClientCookie(client, g_hMarkerPos, sValue);
+	// If no values have changed, no need to save
+	if (!shortcutChanged && !pingSoundChanged && !markerPosChanged) {
+		return;
+	}
+
+	// Otherwise, save the chain format
+	char sValue[64];
+	FormatEx(sValue, sizeof(sValue), "%d|%d|%d", 
+		g_bShorcut[client] ? 1 : 0,
+		g_bPingSound[client] ? 1 : 0,
+		g_iMarkerPos[client]);
+
+	SetClientCookie(client, g_hZLeaderSettings, sValue);
 }
 
 public void ZLeaderCookieHandler(int client, CookieMenuAction action, any info, char[] buffer, int maxlen) {
@@ -594,9 +630,11 @@ public int ZLeaderSettingHandler(Menu menu, MenuAction action, int param1, int p
 				g_bShorcut[param1] = !g_bShorcut[param1];
 				FormatEx(status, 64, "%T", g_bShorcut[param1] ? "Enabled Chat" : "Disabled Chat", param1);
 				CPrintToChat(param1, "%T %T", "Prefix", param1, "You set shortcut", param1, status);
+				SetClientCookies(param1);
 			} else if (strcmp(info, "markerpos", false) == 0) {
 				g_iMarkerPos[param1] = (g_iMarkerPos[param1] == MK_TYPE_CLIENT) ? MK_TYPE_CROSSHAIR : MK_TYPE_CLIENT;
 				CPrintToChat(param1, "%T %T", "Prefix", param1, (g_iMarkerPos[param1] == MK_TYPE_CLIENT) ? "Marker Pos Player Position" : "Marker Pos Crosshair", param1);
+				SetClientCookies(param1);
 			}
 
 			ZLeaderSetting(param1);
@@ -622,8 +660,6 @@ public void OnClientDisconnect(int client) {
 
 	FormatEx(g_sSteamIDs2[client], sizeof(g_sSteamIDs2[]), "");
 	FormatEx(g_sSteamIDs64[client], sizeof(g_sSteamIDs64[]), "");
-
-	SetClientCookies(client);
 }
 
 public void OnPlayerTeam(Event event, const char[] name, bool dontBroadcast) {
