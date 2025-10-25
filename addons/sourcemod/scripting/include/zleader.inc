@@ -5,7 +5,7 @@
 
 #define ZLeader_V_MAJOR   "3"
 #define ZLeader_V_MINOR   "7"
-#define ZLeader_V_PATCH   "0"
+#define ZLeader_V_PATCH   "1"
 
 #define ZLeader_VERSION   ZLeader_V_MAJOR..."."...ZLeader_V_MINOR..."."...ZLeader_V_PATCH
 

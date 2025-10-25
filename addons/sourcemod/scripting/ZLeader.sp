@@ -4,6 +4,7 @@
 #include <sdktools>
 #include <sdkhooks>
 #include <cstrike>
+#include <regex>
 #include <clientprefs>
 #include <multicolors>
 #include <zombiereloaded>
@@ -670,16 +671,18 @@ public void OnClientDisconnect(int client) {
 }
 
 public void OnPlayerTeam(Event event, const char[] name, bool dontBroadcast) {
-	int client = GetClientOfUserId(event.GetInt("userid"));
+	int iUserID = event.GetInt("userid");
+	int client = GetClientOfUserId(iUserID);
 	// We need to perform OnPlayerTeam after OnPlayerDeath, to check if leader moved to spec
 	if (IsClientLeader(client))
-		CreateTimer(0.2, Timer_OnTeamChange, client, TIMER_FLAG_NO_MAPCHANGE);
+		CreateTimer(0.2, Timer_OnTeamChange, iUserID, TIMER_FLAG_NO_MAPCHANGE);
 }
 
 public void OnPlayerDeath(Event event, const char[] name, bool dontBroadcast) {
-	int client = GetClientOfUserId(event.GetInt("userid"));
+	int iUserID = event.GetInt("userid");
+	int client = GetClientOfUserId(iUserID);
 	if (IsClientLeader(client))
-		CreateTimer(0.1, Timer_OnDeath, client, TIMER_FLAG_NO_MAPCHANGE);
+		CreateTimer(0.1, Timer_OnDeath, iUserID, TIMER_FLAG_NO_MAPCHANGE);
 }
 
 public void ZR_OnClientInfected(int client, int attacker, bool motherinfect, bool override, bool respawn) {
@@ -710,8 +713,9 @@ public Action Timer_RoundEndClean(Handle timer) {
 	return Plugin_Handled;
 }
 
-public Action Timer_OnDeath(Handle timer, int client) {
-	if (!client)
+public Action Timer_OnDeath(Handle timer, int iUserID) {
+	int client = GetClientOfUserId(iUserID);
+	if (!client || !IsClientInGame(client))
 		return Plugin_Stop;
 
 	if (GetClientTeam(client) <= CS_TEAM_SPECTATOR)
@@ -723,8 +727,9 @@ public Action Timer_OnDeath(Handle timer, int client) {
 	return Plugin_Continue;
 }
 
-public Action Timer_OnTeamChange(Handle timer, int client) {
-	if (!client)
+public Action Timer_OnTeamChange(Handle timer, int iUserID) {
+	int client = GetClientOfUserId(iUserID);
+	if (!client || !IsClientInGame(client))
 		return Plugin_Stop;
 
 	if (IsClientLeader(client) && g_bSuicideSpectate[client]) {
@@ -1471,7 +1476,7 @@ public void CreatePingBeam(int client) {
 	// Allow Ping Beam to don't have CD.
 	float RemovePingMarker = g_cvCooldown.FloatValue;
 	if (RemovePingMarker > 0)
-		CreateTimer(RemovePingMarker, Timer_RemovePingMarker, client);
+		CreateTimer(RemovePingMarker, Timer_RemovePingMarker, client, TIMER_FLAG_NO_MAPCHANGE);
 	
 	CreateTimer(0.3, Timer_PingBeamRing, client | (g_Serial_Ping << 7), TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 
@@ -2382,8 +2387,9 @@ public Action HookDecal(const char[] sTEName, const int[] iClients, int iNumClie
 
 stock void QuickMarkerCommand(int client) {
 	if (g_bShorcut[client]) {
+		int iUserID = GetClientUserId(client);
 		g_iButtonMarkerCount[client]++;
-		CreateTimer(1.0, ResetMarkerButtonPressed, client);
+		CreateTimer(1.0, ResetMarkerButtonPressed, iUserID, TIMER_FLAG_NO_MAPCHANGE);
 	}
 
 	if (g_iButtonMarkerCount[client] >= 2 && IsClientLeader(client))
@@ -2392,8 +2398,9 @@ stock void QuickMarkerCommand(int client) {
 
 stock void QuickPingCommand(int client) {
 	if (g_bShorcut[client]) {
+		int iUserID = GetClientUserId(client);
 		g_iButtonPingCount[client]++;
-		CreateTimer(1.0, ResetPingButtonPressed, client);
+		CreateTimer(1.0, ResetPingButtonPressed, iUserID, TIMER_FLAG_NO_MAPCHANGE);
 	}
 
 	if (g_iButtonPingCount[client] >= 2 && IsClientLeader(client))
@@ -2402,25 +2409,38 @@ stock void QuickPingCommand(int client) {
 
 stock void QuickLeaderCommand(int client) {
 	if (g_bShorcut[client]) {
+		int iUserID = GetClientUserId(client);
 		g_iButtonLeaderCount[client]++;
-		CreateTimer(1.0, ResetLeaderButtonPressed, client);
+		CreateTimer(1.0, ResetLeaderButtonPressed, iUserID, TIMER_FLAG_NO_MAPCHANGE);
 	}
 
 	if (g_iButtonLeaderCount[client] >= 4 && IsClientLeader(client))
 		LeaderMenu(client);
 }
 
-public Action ResetLeaderButtonPressed(Handle timer, any client) {
+public Action ResetLeaderButtonPressed(Handle timer, any iUserID) {
+	int client = GetClientOfUserId(iUserID);
+	if (!client)
+		return Plugin_Handled;
+
 	g_iButtonLeaderCount[client] = 0;
 	return Plugin_Handled;
 }
 
-public Action ResetMarkerButtonPressed(Handle timer, any client) {
+public Action ResetMarkerButtonPressed(Handle timer, any iUserID) {
+	int client = GetClientOfUserId(iUserID);
+	if (!client)
+		return Plugin_Handled;
+
 	g_iButtonMarkerCount[client] = 0;
 	return Plugin_Handled;
 }
 
-public Action ResetPingButtonPressed(Handle timer, any client) {
+public Action ResetPingButtonPressed(Handle timer, any iUserID) {
+	int client = GetClientOfUserId(iUserID);
+	if (!client)
+		return Plugin_Handled;
+
 	g_iButtonPingCount[client] = 0;
 	return Plugin_Handled;
 }
@@ -2849,7 +2869,7 @@ stock void VerifyAutoRemove(int client, int iEnt, int type, bool bDeductUse = fa
 		g_fMarkerTime = 10.0;
 
 	DataPack pack = new DataPack();
-	pack.WriteCell(client);
+	pack.WriteCell(GetClientUserId(client));
 	pack.WriteCell(iEnt);
 	pack.WriteCell(type);
 	pack.WriteCell(bDeductUse);
@@ -2858,7 +2878,7 @@ stock void VerifyAutoRemove(int client, int iEnt, int type, bool bDeductUse = fa
 
 stock Action Timer_RemoveEdict(Handle timer, DataPack pack) {
 	pack.Reset();
-	int client = pack.ReadCell();
+	int client = GetClientOfUserId(pack.ReadCell());
 	int iEnt = pack.ReadCell();
 	int type = pack.ReadCell();
 	bool bDeductUse = pack.ReadCell();
