@@ -704,7 +704,7 @@ public void OnRoundStart(Event event, const char[] name, bool dontBroadcast) {
 
 public Action Timer_RoundEndClean(Handle timer) {
 	for (int i = 1; i <= MaxClients; i++) {
-		if (IsValidClient(i))
+		if (IsClientInGame(i))
 			Reset_ClientNextVote(i);
 		if (IsClientLeader(i))
 			RemoveLeader(i, R_SELFRESIGN, false);
@@ -933,62 +933,63 @@ public void LeaderMenu(int client) {
 	menu.Display(client, MENU_TIME_FOREVER);
 }
 
-public int LeaderMenuHandler(Menu menu, MenuAction action, int param1, int param2) {
-	if (IsValidClient(param1) && IsClientLeader(param1)) {
-		switch (action) {
-			case MenuAction_DisplayItem: {
-				char info[64], display[128];
-				menu.GetItem(param2, info, sizeof(info));
-				if (strcmp(info, "follow", false) == 0 && g_iClientSprite[param1] == SP_FOLLOW) {
-					FormatEx(display, sizeof(display), "%T (✘)", "Follow Me", param1);
-					return RedrawMenuItem(display);
-				} else if (strcmp(info, "trail", false) == 0 && g_bTrailActive[param1]) {
-					FormatEx(display, sizeof(display), "%T (✘)", "Toggle Trail", param1);
-					return RedrawMenuItem(display);
-				} else if (strcmp(info, "beacon", false) == 0 && g_bBeaconActive[param1]) {
-					FormatEx(display, sizeof(display), "%T (✘)", "Toggle Beacon", param1);
-					return RedrawMenuItem(display);
-				}
+public int LeaderMenuHandler(Menu menu, MenuAction action, int param1, int param2) {{
+	switch (action) {
+		case MenuAction_DisplayItem: {
+			char info[64], display[128];
+			menu.GetItem(param2, info, sizeof(info));
+			if (strcmp(info, "follow", false) == 0 && g_iClientSprite[param1] == SP_FOLLOW) {
+				FormatEx(display, sizeof(display), "%T (✘)", "Follow Me", param1);
+				return RedrawMenuItem(display);
+			} else if (strcmp(info, "trail", false) == 0 && g_bTrailActive[param1]) {
+				FormatEx(display, sizeof(display), "%T (✘)", "Toggle Trail", param1);
+				return RedrawMenuItem(display);
+			} else if (strcmp(info, "beacon", false) == 0 && g_bBeaconActive[param1]) {
+				FormatEx(display, sizeof(display), "%T (✘)", "Toggle Beacon", param1);
+				return RedrawMenuItem(display);
 			}
+		}
 
-			case MenuAction_Select: {
-				char info[64];
-				menu.GetItem(param2, info, sizeof(info));
+		case MenuAction_Select: {
+			if (!IsClientLeader(param1))
+				return 0;
 
-				if (!ZR_IsClientZombie(param1)) {
-					if (strcmp(info, "follow", false) == 0) {
-						if (g_iClientSprite[param1] != SP_FOLLOW) {
-							RemoveSpriteFollow(param1);
-							g_iClientSprite[param1] = SP_FOLLOW;
-							int slot = GetLeaderIndexWithLeaderSlot(g_iClientLeaderSlot[param1]);
-							if (g_LeaderData[slot].L_FollowVMT[0] != '\0')
-								g_iSpriteFollow[param1] = AttachSprite(param1, g_LeaderData[slot].L_FollowVMT, 1);
-						} else {
-							RemoveSpriteFollow(param1);
-							Reset_ClientSprite(param1);
-						}
+			char info[64];
+			menu.GetItem(param2, info, sizeof(info));
 
-						LeaderMenu(param1);
-					} else if (strcmp(info, "trail", false) == 0) {
-						ToggleTrail(param1);
-						LeaderMenu(param1);
-					} else if (strcmp(info, "beacon", false) == 0) {
-						ToggleBeacon(param1);
-						LeaderMenu(param1);
-					} else if (strcmp(info, "marker", false) == 0) {
-						MarkerMenu(param1);
-					} else if (strcmp(info, "removemarker", false) == 0) {
-						RemoveAllMarkers(param1);
-						LeaderMenu(param1);
-					} else if (strcmp(info, "resign", false) == 0) {
-						ResignConfirmMenu(param1);
+			if (!ZR_IsClientZombie(param1)) {
+				if (strcmp(info, "follow", false) == 0) {
+					if (g_iClientSprite[param1] != SP_FOLLOW) {
+						RemoveSpriteFollow(param1);
+						g_iClientSprite[param1] = SP_FOLLOW;
+						int slot = GetLeaderIndexWithLeaderSlot(g_iClientLeaderSlot[param1]);
+						if (g_LeaderData[slot].L_FollowVMT[0] != '\0')
+							g_iSpriteFollow[param1] = AttachSprite(param1, g_LeaderData[slot].L_FollowVMT, 1);
+					} else {
+						RemoveSpriteFollow(param1);
+						Reset_ClientSprite(param1);
 					}
+
+					LeaderMenu(param1);
+				} else if (strcmp(info, "trail", false) == 0) {
+					ToggleTrail(param1);
+					LeaderMenu(param1);
+				} else if (strcmp(info, "beacon", false) == 0) {
+					ToggleBeacon(param1);
+					LeaderMenu(param1);
+				} else if (strcmp(info, "marker", false) == 0) {
+					MarkerMenu(param1);
+				} else if (strcmp(info, "removemarker", false) == 0) {
+					RemoveAllMarkers(param1);
+					LeaderMenu(param1);
+				} else if (strcmp(info, "resign", false) == 0) {
+					ResignConfirmMenu(param1);
 				}
 			}
+		}
 
-			case MenuAction_End: {
-				delete menu;
-			}
+		case MenuAction_End: {
+			delete menu;
 		}
 	}
 	return 0;
@@ -1055,13 +1056,10 @@ public Action Command_CurrentLeader(int client, int args) {
 }
 
 public int CurrentLeaderMenuHandler(Menu menu, MenuAction action, int param1, int param2) {
-	if (IsValidClient(param1) && g_bClientLeader[param1]) {
-		switch (action) {
-			case MenuAction_End: {
-				delete menu;
-			}
-		}
+	if (action == MenuAction_End) {
+		delete menu;
 	}
+	
 	return 0;
 }
 
@@ -1150,8 +1148,9 @@ public Action Command_VoteLeader(int client, int args) {
 	}
 
 	if (GetClientFromSerial(g_iClientVoteWhom[client]) != 0) {
-		if (IsValidClient(GetClientFromSerial(g_iClientVoteWhom[client]))) 
-			g_iClientGetVoted[GetClientFromSerial(g_iClientVoteWhom[client])]--;
+		int clientVoteWhom = GetClientFromSerial(g_iClientVoteWhom[client]);
+		if (clientVoteWhom)
+			g_iClientGetVoted[clientVoteWhom]--;
 	}
 
 	g_iClientGetVoted[target]++;
@@ -1230,7 +1229,7 @@ public Action Command_RemoveLeader(int client, int args) {
 }
 
 public void RemoveLeaderList(int client) {
-	if (!IsValidClient(client)) return;
+	if (!client) return;
 
 	SetGlobalTransTarget(client);
 	Menu menu = new Menu(RemoveLeaderListMenuHandler);
@@ -1687,56 +1686,58 @@ public void MarkerMenu(int client) {
 }
 
 public int MarkerMenuHandler(Menu menu, MenuAction action, int param1, int param2) {
-	if (IsValidClient(param1) && IsClientLeader(param1)) {
-		switch (action) {
-			case MenuAction_DisplayItem: {
-				if (g_iMaximumMarker < 1) {
-					char info[64], display[64];
-					menu.GetItem(param2, info, sizeof(info));
-
-					if (strcmp(info, "normal", false) == 0 && g_iClientMarker[MK_NORMAL][param1] != -1) {
-						FormatEx(display, sizeof(display), "%T (✘)", "Arrow Marker", param1);
-						return RedrawMenuItem(display);
-					} else if (strcmp(info, "defend", false) == 0 && g_iClientMarker[MK_DEFEND][param1] != -1) {
-						FormatEx(display, sizeof(display), "%T (✘)", "Defend Here", param1);
-						return RedrawMenuItem(display);
-					} else if (strcmp(info, "zmtp", false) == 0 && g_iClientMarker[MK_ZMTP][param1] != -1) {
-						FormatEx(display, sizeof(display), "%T (✘)", "ZM Teleport", param1);
-						return RedrawMenuItem(display);
-					} else if (strcmp(info, "nohug", false) == 0 && g_iClientMarker[MK_NOHUG][param1] != -1) {
-						FormatEx(display, sizeof(display), "%T (✘)", "No Doorhug", param1);
-						return RedrawMenuItem(display);
-					}
-				}
-			}
-
-			case MenuAction_Select: {
-				char info[64];
+	switch (action) {
+		case MenuAction_DisplayItem: {
+			if (g_iMaximumMarker < 1) {
+				char info[64], display[64];
 				menu.GetItem(param2, info, sizeof(info));
 
-				if (strcmp(info, "normal", false) == 0)
-					ToggleMarkerState(param1, MK_NORMAL);
-				else if (strcmp(info, "defend", false) == 0)
-					ToggleMarkerState(param1, MK_DEFEND);
-				else if (strcmp(info, "zmtp", false) == 0)
-					ToggleMarkerState(param1, MK_ZMTP);
-				else if (strcmp(info, "nohug", false) == 0)
-					ToggleMarkerState(param1, MK_NOHUG);
-				else if (strcmp(info, "ping", false) == 0)
-					CreatePing(param1);
-				else if (strcmp(info, "removemarker", false) == 0)
-					RemoveAllMarkers(param1);
-
-				MarkerMenu(param1);
+				if (strcmp(info, "normal", false) == 0 && g_iClientMarker[MK_NORMAL][param1] != -1) {
+					FormatEx(display, sizeof(display), "%T (✘)", "Arrow Marker", param1);
+					return RedrawMenuItem(display);
+				} else if (strcmp(info, "defend", false) == 0 && g_iClientMarker[MK_DEFEND][param1] != -1) {
+					FormatEx(display, sizeof(display), "%T (✘)", "Defend Here", param1);
+					return RedrawMenuItem(display);
+				} else if (strcmp(info, "zmtp", false) == 0 && g_iClientMarker[MK_ZMTP][param1] != -1) {
+					FormatEx(display, sizeof(display), "%T (✘)", "ZM Teleport", param1);
+					return RedrawMenuItem(display);
+				} else if (strcmp(info, "nohug", false) == 0 && g_iClientMarker[MK_NOHUG][param1] != -1) {
+					FormatEx(display, sizeof(display), "%T (✘)", "No Doorhug", param1);
+					return RedrawMenuItem(display);
+				}
 			}
+		}
 
-			case MenuAction_Cancel: {
+		case MenuAction_Select: {
+			if (!IsClientLeader(param1))
+				return 0;
+
+			char info[64];
+			menu.GetItem(param2, info, sizeof(info));
+
+			if (strcmp(info, "normal", false) == 0)
+				ToggleMarkerState(param1, MK_NORMAL);
+			else if (strcmp(info, "defend", false) == 0)
+				ToggleMarkerState(param1, MK_DEFEND);
+			else if (strcmp(info, "zmtp", false) == 0)
+				ToggleMarkerState(param1, MK_ZMTP);
+			else if (strcmp(info, "nohug", false) == 0)
+				ToggleMarkerState(param1, MK_NOHUG);
+			else if (strcmp(info, "ping", false) == 0)
+				CreatePing(param1);
+			else if (strcmp(info, "removemarker", false) == 0)
+				RemoveAllMarkers(param1);
+
+			MarkerMenu(param1);
+		}
+
+		case MenuAction_Cancel: {
+			if (IsClientLeader(param1))
 				LeaderMenu(param1);
-			}
+		}
 
-			case MenuAction_End: {
-				delete menu;
-			}
+		case MenuAction_End: {
+			delete menu;
 		}
 	}
 	return 0;
@@ -2037,7 +2038,7 @@ stock bool TraceFilterAllEntities(int entity, int contentsMask, int client) {
 ||  Leader Chat
 ============================================================================ */
 public Action HookPlayerChat(int client, char[] command, int args) {
-	if (IsValidClient(client) && IsClientLeader(client)) {
+	if (IsClientLeader(client)) {
 		char LeaderText[256];
 		GetCmdArgString(LeaderText, sizeof(LeaderText));
 		StripQuotes(LeaderText);
@@ -2063,7 +2064,7 @@ public Action HookPlayerChat(int client, char[] command, int args) {
 }
 
 public Action HookPlayerChatTeam(int client, char[] command, int args) {
-	if (IsValidClient(client) && IsClientLeader(client)) {
+	if (IsClientLeader(client)) {
 		char LeaderText[256];
 		GetCmdArgString(LeaderText, sizeof(LeaderText));
 		StripQuotes(LeaderText);
@@ -2358,7 +2359,7 @@ public Action QuickMarkerMenuCommand(int client, const char[] command, int argc)
 // Spray x2 : Ping Shortcut
 // +Attack3 x4 : Leader Menu (x4: +attack(<ANY>) = attack in loop)
 public Action OnPlayerRunCmd(int client, int &buttons, int &impulse) {
-	if (IsValidClient(client) && IsPlayerAlive(client) && IsClientLeader(client)) {
+	if (IsClientLeader(client)) {
 		if (impulse == 0x64) {
 			QuickMarkerCommand(client);
 			return Plugin_Continue;
@@ -2607,7 +2608,7 @@ public bool Filter_NotLeaders(const char[] sPattern, Handle hClients) {
 
 public bool Filter_Leader(const char[] sPattern, Handle hClients) {
 	for (int i = 1; i <= MaxClients; i++) {
-		if (IsValidClient(i) && i < MAXLEADER && g_iCurrentLeader[i])
+		if (IsClientInGame(i) && !IsFakeClient(i) && && i < MAXLEADER && g_iCurrentLeader[i])
 			PushArrayCell(hClients, i);
 	}
 	return true;
@@ -2615,7 +2616,7 @@ public bool Filter_Leader(const char[] sPattern, Handle hClients) {
 
 public bool Filter_NotLeader(const char[] sPattern, Handle hClients) {
 	for (int i = 1; i <= MaxClients; i++) {
-		if (IsValidClient(i) && (i >= MAXLEADER || !g_iCurrentLeader[i]))
+		if (IsClientInGame(i) && !IsFakeClient(i) && (i >= MAXLEADER || !g_iCurrentLeader[i]))
 			PushArrayCell(hClients, i);
 	}
 	return true;
@@ -2743,38 +2744,41 @@ public void ResignConfirmMenu(int client) {
 }
 
 public int ResignConfirmMenuHandler(Menu menu, MenuAction action, int param1, int param2) {
-	if (IsValidClient(param1) && IsClientLeader(param1)) {
-		switch (action) {
-			case MenuAction_DisplayItem: {
-				char info[64], display[64];
-				menu.GetItem(param2, info, sizeof(info));
+	switch (action) {
+		case MenuAction_DisplayItem: {
+			char info[64], display[64];
+			menu.GetItem(param2, info, sizeof(info));
 
-				if (strcmp(info, "canceled", false) == 0) {
-					FormatEx(display, sizeof(display), "%T", "No", param1);
-					return RedrawMenuItem(display);
-				} else if (strcmp(info, "confirmed", false) == 0) {
-					FormatEx(display, sizeof(display), "%T", "Yes", param1);
-					return RedrawMenuItem(display);
-				}
-			}
-			case MenuAction_Select: {
-				char info[64];
-				menu.GetItem(param2, info, sizeof(info));
-
-				if (strcmp(info, "confirmed", false) == 0) {
-					RemoveLeader(param1, R_SELFRESIGN, true);
-				} else if (strcmp(info, "canceled", false) == 0) {
-					LeaderMenu(param1);
-				}
-			}
-			case MenuAction_Cancel: {
-				LeaderMenu(param1);
-			}
-			case MenuAction_End: {
-				delete menu;
+			if (strcmp(info, "canceled", false) == 0) {
+				FormatEx(display, sizeof(display), "%T", "No", param1);
+				return RedrawMenuItem(display);
+			} else if (strcmp(info, "confirmed", false) == 0) {
+				FormatEx(display, sizeof(display), "%T", "Yes", param1);
+				return RedrawMenuItem(display);
 			}
 		}
+		case MenuAction_Select: {
+			if (!IsClientLeader(param1))
+				return 0;
+
+			char info[64];
+			menu.GetItem(param2, info, sizeof(info));
+
+			if (strcmp(info, "confirmed", false) == 0) {
+				RemoveLeader(param1, R_SELFRESIGN, true);
+			} else if (strcmp(info, "canceled", false) == 0) {
+				LeaderMenu(param1);
+			}
+		}
+		case MenuAction_Cancel: {
+			if (IsClientLeader(param1))
+				LeaderMenu(param1);
+		}
+		case MenuAction_End: {
+			delete menu;
+		}
 	}
+
 	return 0;
 }
 
@@ -3030,7 +3034,7 @@ void Reset_AllLeaders() {
 	for (int i = 0; i < g_iTotalLeader; i++) {
 		int client = g_iCurrentLeader[i];
 		if (client != -1) {
-			if (IsValidClient(client)) {
+			if (IsClientInGame(client) && !IsFakeClient(client)) {
 				RemoveLeader(client, R_ADMINFORCED, false);
 			} else {
 				Reset_LeaderSlotByIndex(i);
