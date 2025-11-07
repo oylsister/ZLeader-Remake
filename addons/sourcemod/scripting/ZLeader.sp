@@ -933,7 +933,7 @@ public void LeaderMenu(int client) {
 	menu.Display(client, MENU_TIME_FOREVER);
 }
 
-public int LeaderMenuHandler(Menu menu, MenuAction action, int param1, int param2) {{
+public int LeaderMenuHandler(Menu menu, MenuAction action, int param1, int param2) {
 	switch (action) {
 		case MenuAction_DisplayItem: {
 			char info[64], display[128];
@@ -2608,7 +2608,7 @@ public bool Filter_NotLeaders(const char[] sPattern, Handle hClients) {
 
 public bool Filter_Leader(const char[] sPattern, Handle hClients) {
 	for (int i = 1; i <= MaxClients; i++) {
-		if (IsClientInGame(i) && !IsFakeClient(i) && && i < MAXLEADER && g_iCurrentLeader[i])
+		if (IsClientInGame(i) && !IsFakeClient(i) && i < MAXLEADER && g_iCurrentLeader[i])
 			PushArrayCell(hClients, i);
 	}
 	return true;
