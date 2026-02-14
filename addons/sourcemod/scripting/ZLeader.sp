@@ -704,8 +704,11 @@ public void OnRoundStart(Event event, const char[] name, bool dontBroadcast) {
 
 public Action Timer_RoundEndClean(Handle timer) {
 	for (int i = 1; i <= MaxClients; i++) {
-		if (IsClientInGame(i))
-			Reset_ClientNextVote(i);
+		if (!IsClientInGame(i))
+			continue;
+
+		Reset_ClientNextVote(i);
+
 		if (IsClientLeader(i))
 			RemoveLeader(i, R_SELFRESIGN, false);
 	}
@@ -1059,7 +1062,7 @@ public int CurrentLeaderMenuHandler(Menu menu, MenuAction action, int param1, in
 	if (action == MenuAction_End) {
 		delete menu;
 	}
-	
+
 	return 0;
 }
 
@@ -1147,10 +1150,9 @@ public Action Command_VoteLeader(int client, int args) {
 		return Plugin_Handled;
 	}
 
-	if (GetClientFromSerial(g_iClientVoteWhom[client]) != 0) {
-		int clientVoteWhom = GetClientFromSerial(g_iClientVoteWhom[client]);
-		if (clientVoteWhom)
-			g_iClientGetVoted[clientVoteWhom]--;
+	int clientVoteWhom = GetClientFromSerial(g_iClientVoteWhom[client]);
+	if (clientVoteWhom != 0) {
+		g_iClientGetVoted[clientVoteWhom]--;
 	}
 
 	g_iClientGetVoted[target]++;
@@ -1229,7 +1231,8 @@ public Action Command_RemoveLeader(int client, int args) {
 }
 
 public void RemoveLeaderList(int client) {
-	if (!client) return;
+	if (!client)
+		return;
 
 	SetGlobalTransTarget(client);
 	Menu menu = new Menu(RemoveLeaderListMenuHandler);
@@ -2180,10 +2183,10 @@ public void PrintRadio(int client, char[] text) {
 
 	if (IsClientLeader(client)) {
 		GetLeaderCodename(g_iClientLeaderSlot[client], codename, sizeof(codename));
-		FormatEx(szMessage, sizeof(szMessage), "{darkred}[{orange}Leader %s{darkred}] {teamcolor}%N {default}(RADIO): %s", codename, client, text);
+		FormatEx(szMessage, sizeof(szMessage), "{darkred}[{orange}Leader %s{darkred}] {blue}%N {default}(RADIO): %s", codename, client, text);
 		for (int i = 1; i <= MaxClients; i++) {
 			if (IsClientInGame(i) && IsPlayerAlive(i) && GetClientTeam(i) == 3)
-				CPrintToChat(i, szMessage);
+				CPrintToChat(i, "%s", szMessage);
 		}
 	}
 }
@@ -2359,6 +2362,9 @@ public Action QuickMarkerMenuCommand(int client, const char[] command, int argc)
 // Spray x2 : Ping Shortcut
 // +Attack3 x4 : Leader Menu (x4: +attack(<ANY>) = attack in loop)
 public Action OnPlayerRunCmd(int client, int &buttons, int &impulse) {
+	if (!IsClientInGame(client) || !IsPlayerAlive(client))
+		return Plugin_Continue;
+
 	if (IsClientLeader(client)) {
 		if (impulse == 0x64) {
 			QuickMarkerCommand(client);
@@ -2398,6 +2404,9 @@ stock void QuickMarkerCommand(int client) {
 }
 
 stock void QuickPingCommand(int client) {
+	if (!client || !IsClientInGame(client))
+		return;
+
 	if (g_bShorcut[client]) {
 		int iUserID = GetClientUserId(client);
 		g_iButtonPingCount[client]++;
