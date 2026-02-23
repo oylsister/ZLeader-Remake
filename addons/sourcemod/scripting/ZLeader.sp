@@ -494,6 +494,8 @@ public void OnMapStart() {
 
 	if (GameConfGetKeyValue(gameConfig, "SpriteHalo", buffer, sizeof(buffer)) && buffer[0])
 		g_HaloSprite = PrecacheModel(buffer);
+
+	delete gameConfig;
 }
 
 /* =========================================================================
