@@ -1493,7 +1493,7 @@ public Action Timer_Beacon(Handle timer, any value) {
 ||  Bullets impact tracers
 ============================================================================ */
 public void ToggleTracers(int client) {
-	g_bTracersActive[client] = true;
+	g_bTracersActive[client] = !g_bTracersActive[client];
 }
 
 /* =========================================================================
