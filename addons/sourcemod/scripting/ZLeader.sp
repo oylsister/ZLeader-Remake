@@ -27,6 +27,7 @@ ConVar g_cvGlowLeader,
 	g_cvEnableVIP,
 	g_cvCooldown,
 	g_cvMarkerNumber,
+	g_cvTracers,
 	g_cvMarkerTime,
 	g_cvRemoveNomOnMute;
 
@@ -34,8 +35,10 @@ int g_Serial_Beacon = 0,
 	g_Serial_Ping = 0,
 	g_BeamSprite = -1,
 	g_HaloSprite = -1,
+	g_iSpriteLaser = -1,
 	g_iPingCooldown,
 	g_iMaximumMarker,
+	g_iPingColor[MAXPLAYERS + 1][4],
 	g_iMarkerPos[MAXPLAYERS + 1],
 	g_iSpriteFollow[MAXPLAYERS + 1],
 	g_iSpriteLeader[MAXPLAYERS + 1],
@@ -65,12 +68,15 @@ bool g_bLate,
 	g_bPlugin_MCE,
 	g_bNeonLeader,
 	g_bGlowLeader,
+	g_bTracers,
 	g_bVIPGroups,
+	g_bBlockLeaderChat,
 	g_bShorcut[MAXPLAYERS + 1],
 	g_bPingSound[MAXPLAYERS + 1],
 	g_bClientLeader[MAXPLAYERS + 1],
 	g_bTrailActive[MAXPLAYERS + 1] = { false, ... },
 	g_bBeaconActive[MAXPLAYERS + 1] = { false, ... },
+	g_bTracersActive[MAXPLAYERS + 1] = { false, ... },
 	g_bPingBeamActive[MAXPLAYERS + 1] = { false, ... },
 	g_bSuicideSpectate[MAXPLAYERS + 1] = { false, ... },
 	g_bResignedByAdmin[MAXPLAYERS + 1] = { false, ... };
@@ -86,7 +92,9 @@ char g_sMarkerTypes[MK_TOTAL][32] = { "MK_NORMAL", "MK_DEFEND", "MK_ZMTP", "MK_N
 char g_sEntityTypes[ENTITIES_PER_MK][32] = { "prop_dynamic", "light_dynamic", "env_sprite" };
 
 float g_fPos[3],
-	g_fMarkerTime; 
+	g_fTracerTime[MAXPLAYERS + 1],
+	g_fTracerWidth[MAXPLAYERS + 1],
+	g_fMarkerTime;
 
 Handle g_hZLeaderSettings = INVALID_HANDLE,
 	g_hSetClientLeaderForward = INVALID_HANDLE,
@@ -123,8 +131,11 @@ enum struct LeaderData {
 
 	char L_MarkerPing_VMT[PLATFORM_MAX_PATH];
 	char L_MarkerPing_VTF[PLATFORM_MAX_PATH];
-	int L_iColorPing[4]; 
+	int L_iColorPing[4];
 	char L_MarkerPing_Sound[PLATFORM_MAX_PATH];
+
+	float L_TracerTime;
+	float L_TracerWidth;
 }
 
 LeaderData g_LeaderData[MAXLEADER];
@@ -190,6 +201,7 @@ public void OnPluginStart() {
 	g_cvEnableVIP = CreateConVar("sm_zleader_vip", "0", "VIP groups can be leader?", _, true, 0.0, true, 1.0);
 	g_cvCooldown = CreateConVar("sm_zleader_cooldown", "4", "Cooldown in seconds for ping beam");
 	g_cvMarkerNumber = CreateConVar("sm_zleader_marker_number", "0", "Max markers per player [0 or lower: One marker of each type max | 1 or higher: Max markers in total]", _, true, 0.0, true, view_as<float>(MAX_MARKERS));
+	g_cvTracers = CreateConVar("sm_zleader_tracers", "1", "Allow leaders to use tracers ? (bullet impact)", _, true, 0.0, true, 1.0);
 	g_cvMarkerTime = CreateConVar("sm_zleader_marker_time", "15", "Time to remove marker in seconds", _, true, 1.0);
 	g_cvRemoveNomOnMute = CreateConVar("sm_zleader_remove_nominate_onmute", "1", "Remove a player's nomination when they are muted", 0, true, 0.0, true, 1.0);
 
@@ -203,7 +215,8 @@ public void OnPluginStart() {
 	HookConVarChange(g_cvCooldown, OnConVarChanged);
 	HookConVarChange(g_cvMarkerNumber, OnConVarChanged);
 	HookConVarChange(g_cvMarkerTime, OnConVarChanged);
-	
+	HookConVarChange(g_cvTracers, OnConVarChanged);
+
 	/* INITIALIZE VALUES */
 	g_bNeonLeader = GetConVarBool(g_cvNeonLeader);
 	g_bGlowLeader = GetConVarBool(g_cvGlowLeader);
@@ -212,6 +225,7 @@ public void OnPluginStart() {
 	g_iPingCooldown = GetConVarInt(g_cvCooldown);
 	g_iMaximumMarker = GetConVarInt(g_cvMarkerNumber);
 	g_fMarkerTime = GetConVarFloat(g_cvMarkerTime);
+	g_bTracers = GetConVarBool(g_cvTracers);
 
 	if (g_iMaximumMarker > MAX_MARKERS)
 		g_iMaximumMarker = MAX_MARKERS;
@@ -227,6 +241,7 @@ public void OnPluginStart() {
 	HookEvent("player_death", OnPlayerDeath, EventHookMode_Post);
 	HookEvent("round_end", OnRoundEnd);
 	HookEvent("round_start", OnRoundStart);
+	HookEvent("bullet_impact", OnBulletImpact, EventHookMode_Post);
 	HookRadio();
 
 	/* COOKIES */
@@ -267,6 +282,8 @@ public void OnConVarChanged(ConVar convar, const char[] oldValue, const char[] n
 		g_iMaximumMarker = GetConVarInt(g_cvMarkerNumber);
 	else if (convar == g_cvMarkerTime)
 		g_fMarkerTime = GetConVarFloat(g_cvMarkerTime);
+	else if (convar == g_cvTracers)
+		g_bTracers = GetConVarBool(g_cvTracers);
 
 	if (g_iMaximumMarker > MAX_MARKERS)
 		g_iMaximumMarker = MAX_MARKERS;
@@ -298,7 +315,7 @@ void LoadConfig() {
 
 			KvGetString(kv, "trail_vmt", g_LeaderData[g_iTotalLeader].L_TrailVMT, PLATFORM_MAX_PATH);
 			KvGetString(kv, "trail_vtf", g_LeaderData[g_iTotalLeader].L_TrailVTF, PLATFORM_MAX_PATH);
-			
+
 			KvGetString(kv, "follow_vmt", g_LeaderData[g_iTotalLeader].L_FollowVMT, PLATFORM_MAX_PATH);
 			KvGetString(kv, "follow_vtf", g_LeaderData[g_iTotalLeader].L_FollowVTF, PLATFORM_MAX_PATH);
 
@@ -325,7 +342,10 @@ void LoadConfig() {
 			KvGetString(kv, "ping_vtf", g_LeaderData[g_iTotalLeader].L_MarkerPing_VTF, PLATFORM_MAX_PATH);
 			KvGetColor(kv, "ping_color", g_LeaderData[g_iTotalLeader].L_iColorPing[0], g_LeaderData[g_iTotalLeader].L_iColorPing[1], g_LeaderData[g_iTotalLeader].L_iColorPing[2], g_LeaderData[g_iTotalLeader].L_iColorPing[3]);
 			KvGetString(kv, "ping_sound", g_LeaderData[g_iTotalLeader].L_MarkerPing_Sound, PLATFORM_MAX_PATH);
-			
+
+			g_LeaderData[g_iTotalLeader].L_TracerTime = KvGetFloat(kv, "tracer_time", 0.7);
+			g_LeaderData[g_iTotalLeader].L_TracerWidth = KvGetFloat(kv, "tracer_width", 0.8);
+
 			g_iTotalLeader++;
 		}
 		while(KvGotoNextKey(kv));
@@ -352,7 +372,7 @@ void LoadDownloadTable() {
 		int pos;
 		pos = StrContains(buffer, "//");
 		if (pos != -1) buffer[pos] = '\0';
-		
+
 		pos = StrContains(buffer, "#");
 		if (pos != -1) buffer[pos] = '\0';
 
@@ -361,7 +381,7 @@ void LoadDownloadTable() {
 
 		pos = StrContains(buffer, "*");
 		if (pos != -1) buffer[pos] = '\0';
-		
+
 		TrimString(buffer);
 		if (buffer[0] == '\0') continue;
 
@@ -405,6 +425,14 @@ void PrecacheConfig() {
 
 		if (g_LeaderData[i].L_MarkerPing_Sound[0] != '\0')
 			PrecacheSound(g_LeaderData[i].L_MarkerPing_Sound, true);
+	}
+
+	if (g_bTracers && (g_iSpriteLaser = PrecacheModel("materials/sprites/laser.vmt")) == -1)
+	{
+		LogError("Sprite for laser not precached, tracers disabled");
+		g_cvTracers.BoolValue = false;
+		g_bTracers = false;
+		return;
 	}
 }
 
@@ -496,6 +524,10 @@ public void OnMapStart() {
 		g_HaloSprite = PrecacheModel(buffer);
 
 	delete gameConfig;
+
+	char sMap[64];
+	GetCurrentMap(sMap, sizeof(sMap));
+	g_bBlockLeaderChat = StrContains(sMap, "ze_collective_css") != -1;
 }
 
 /* =========================================================================
@@ -532,7 +564,7 @@ void ParseClientCookie(int client, bool &shortcut, bool &pingSound, int &markerP
 	if (buffer[0] != '\0') {
 		char parts[3][16];
 		int count = ExplodeString(buffer, "|", parts, 3, sizeof(parts[]));
-		
+
 		if (count >= 1) {
 			shortcut = view_as<bool>(StringToInt(parts[0]));
 		}
@@ -583,7 +615,7 @@ public void SetClientCookies(int client) {
 
 	// Otherwise, save the chain format
 	char sValue[64];
-	FormatEx(sValue, sizeof(sValue), "%d|%d|%d", 
+	FormatEx(sValue, sizeof(sValue), "%d|%d|%d",
 		g_bShorcut[client] ? 1 : 0,
 		g_bPingSound[client] ? 1 : 0,
 		g_iMarkerPos[client]);
@@ -702,6 +734,33 @@ public void OnRoundEnd(Event event, const char[] name, bool dontBroadcast) {
 public void OnRoundStart(Event event, const char[] name, bool dontBroadcast) {
 	Reset_AllLeaders();
 	EnsureLeaderConsistency();
+}
+
+public void OnBulletImpact(Event event, const char[] name, bool dontBroadcast) {
+	if (!g_bTracers)
+		return;
+
+	int client = GetClientOfUserId(event.GetInt("userid"));
+
+	if (!g_bTracersActive[client])
+		return;
+
+	float origin[3], destination[3], adjustedOrigin[3];
+	GetClientEyePosition(client, origin);
+
+	destination[0] = event.GetFloat("x");
+	destination[1] = event.GetFloat("y");
+	destination[2] = event.GetFloat("z");
+
+	float distance = GetVectorDistance(origin, destination);
+	float percent = 0.4 / (distance / 100.0);
+
+	adjustedOrigin[0] = origin[0] + (destination[0] - origin[0]) * percent;
+	adjustedOrigin[1] = origin[1] + (destination[1] - origin[1]) * percent - 0.08;
+	adjustedOrigin[2] = origin[2] + (destination[2] - origin[2]) * percent;
+
+	TE_SetupBeamPoints(adjustedOrigin, destination, g_iSpriteLaser, 0, 0, 0, g_fTracerTime[client], g_fTracerWidth[client], g_fTracerWidth[client] / 2, 1, 0.0, g_iPingColor[client], 0);
+	TE_SendToAll();
 }
 
 public Action Timer_RoundEndClean(Handle timer) {
@@ -893,9 +952,9 @@ public void LeaderMenu(int client) {
 				FormatEx(sds, sizeof(sds), "%t", "ZM Teleport");
 			if (Arrow && ZMTP)
 				FormatEx(sds, sizeof(sds), "%t\n→ %t", "Arrow Marker", "ZM Teleport");
-			if (Arrow && Defend) 
+			if (Arrow && Defend)
 				FormatEx(sds, sizeof(sds), "%t\n→ %t", "Arrow Marker", "Defend Here");
-			if (Arrow && NoHug) 
+			if (Arrow && NoHug)
 				FormatEx(sds, sizeof(sds), "%t\n→ %t", "Arrow Marker", "No Doorhug");
 			if (NoHug && ZMTP)
 				FormatEx(sds, sizeof(sds), "%t\n→ %t", "ZM Teleport", "No Doorhug");
@@ -918,11 +977,13 @@ public void LeaderMenu(int client) {
 	} else
 		menu.SetTitle("%T", "Menu Leader title", client);
 
-	char follow[64], trail[64], beacon[64], marker[64], removemarker[64], resign[64];
+	char follow[64], trail[64], beacon[64], tracers[64], marker[64], removemarker[64], resign[64];
 
 	FormatEx(follow, 64, "%T", "Follow Me", client);
 	FormatEx(trail, 64, "%T", "Toggle Trail", client);
 	FormatEx(beacon, 64, "%T", "Toggle Beacon", client);
+	if (g_bTracers)
+		FormatEx(tracers, 64, "%T", "Toggle Tracers", client);
 	FormatEx(marker, 64, "%T", "Place Marker", client);
 	FormatEx(removemarker, 64, "%T", "Remove Marker", client);
 	FormatEx(resign, 64, "%T", "Resign from Leader", client);
@@ -930,6 +991,8 @@ public void LeaderMenu(int client) {
 	menu.AddItem("follow", follow);
 	menu.AddItem("trail", trail);
 	menu.AddItem("beacon", beacon);
+	if (g_bTracers)
+		menu.AddItem("tracers", tracers);
 	menu.AddItem("marker", marker);
 	menu.AddItem("removemarker", removemarker);
 	menu.AddItem("resign", resign);
@@ -951,6 +1014,9 @@ public int LeaderMenuHandler(Menu menu, MenuAction action, int param1, int param
 				return RedrawMenuItem(display);
 			} else if (strcmp(info, "beacon", false) == 0 && g_bBeaconActive[param1]) {
 				FormatEx(display, sizeof(display), "%T (✘)", "Toggle Beacon", param1);
+				return RedrawMenuItem(display);
+			} else if (strcmp(info, "tracers", false) == 0 && g_bTracersActive[param1]) {
+				FormatEx(display, sizeof(display), "%T (✘)", "Toggle Tracers", param1);
 				return RedrawMenuItem(display);
 			}
 		}
@@ -981,6 +1047,9 @@ public int LeaderMenuHandler(Menu menu, MenuAction action, int param1, int param
 					LeaderMenu(param1);
 				} else if (strcmp(info, "beacon", false) == 0) {
 					ToggleBeacon(param1);
+					LeaderMenu(param1);
+				} else if (strcmp(info, "tracers", false) == 0) {
+					ToggleTracers(param1);
 					LeaderMenu(param1);
 				} else if (strcmp(info, "marker", false) == 0) {
 					MarkerMenu(param1);
@@ -1040,7 +1109,7 @@ public Action Command_CurrentLeader(int client, int args) {
 
 	menu.SetTitle("%T %T", "Menu Prefix", client, "Menu Leader list title", client);
 	CReplyToCommand(client, "%T %T", "Prefix", client, "Current Leaders", client);
-	
+
 	char codename[32], sLine[128];
 	for (int i = 0; i < g_iTotalLeader; i++) {
 		GetLeaderCodename(i, codename, sizeof(codename));
@@ -1095,7 +1164,7 @@ public Action Command_VoteLeader(int client, int args) {
 	bool TnIsMl;
 	int iTargets[MAXPLAYERS], TargetCount;
 	char sArgs[64], sTargetName[MAX_TARGET_LENGTH];
-	GetCmdArg(1, sArgs, sizeof(sArgs)); 
+	GetCmdArg(1, sArgs, sizeof(sArgs));
 
 	if ((TargetCount = ProcessTargetString(sArgs, client, iTargets, MAXPLAYERS,
 		COMMAND_FILTER_CONNECTED | COMMAND_FILTER_ALIVE | COMMAND_FILTER_NO_MULTI | COMMAND_FILTER_NO_IMMUNITY, sTargetName, sizeof(sTargetName), TnIsMl)) <= 0)
@@ -1180,7 +1249,7 @@ public Action Command_VoteLeader(int client, int args) {
 			CReplyToCommand(client, "%T %T", "Prefix", client, "Slot is full", client);
 			return Plugin_Handled;
 		}
-		
+
 		SetClientLeader(target, -1, slot);
 		LeaderMenu(target);
 	}
@@ -1242,7 +1311,7 @@ public void RemoveLeaderList(int client) {
 	char title[128];
 	FormatEx(title, sizeof(title), "%t %t \n%t", "Menu Prefix", "Menu Leader list title", "Menu Remove Leader title");
 	menu.SetTitle("%s", title);
-	
+
 	for (int i = 0; i < g_iTotalLeader; i++) {
 		char codename[32];
 		char sLine[128];
@@ -1304,7 +1373,7 @@ stock void CreateTrail(int client) {
 
 	if (!IsPlayerAlive(client) || !(1 < GetClientTeam(client) < 4))
 		return;
-	
+
 	if (GetEdictsCount() > MAXEDICTS) {
 		CPrintToChat(client, "%T %T", "Prefix", client, "Edicts Limit", client);
 		return;
@@ -1325,7 +1394,7 @@ stock void CreateTrail(int client) {
 		DispatchKeyValue(g_TrailModel[client], "targetname", "trail");
 		DispatchSpawn(g_TrailModel[client]);
 
-		float angles[3], origin[3]; 
+		float angles[3], origin[3];
 		char angle[64][3];
 
 		ExplodeString(g_sTrailPosition, " ", angle, 3, sizeof(angle), false);
@@ -1341,7 +1410,7 @@ stock void CreateTrail(int client) {
 		TeleportEntity(g_TrailModel[client], origin, NULL_VECTOR, NULL_VECTOR);
 
 		SetVariantString("!activator");
-		AcceptEntityInput(g_TrailModel[client], "SetParent", client); 
+		AcceptEntityInput(g_TrailModel[client], "SetParent", client);
 		SetEntPropFloat(g_TrailModel[client], Prop_Send, "m_flTextureRes", 0.05);
 		SetEntPropEnt(g_TrailModel[client], Prop_Send, "m_hOwnerEntity", client);
 	}
@@ -1409,21 +1478,22 @@ public Action Timer_Beacon(Handle timer, any value) {
 	GetClientAbsOrigin(client, vec);
 	vec[2] += 10;
 
-	// First beacon beam
-	int greyColor[4] = {128, 128, 128, 255};
-	TE_SetupBeamRingPoint(vec, 10.0, 375.0, g_BeamSprite, g_HaloSprite, 0, 20, 0.5, 12.0, 0.0, greyColor, 10, 0);
+	// First beacon beam (grey)
+	TE_SetupBeamRingPoint(vec, 10.0, 375.0, g_BeamSprite, g_HaloSprite, 0, 20, 0.5, 12.0, 0.0, {128, 128, 128, 255}, 10, 0);
 	TE_SendToAll();
 
 	// Second beacon beam
-	int iColor[4];
-	iColor[0] = g_LeaderData[slot].L_iColorPing[0];
-	iColor[1] = g_LeaderData[slot].L_iColorPing[1];
-	iColor[2] = g_LeaderData[slot].L_iColorPing[2];
-	iColor[3] = g_LeaderData[slot].L_iColorPing[3];
-	TE_SetupBeamRingPoint(vec, 10.0, 375.0, g_BeamSprite, g_HaloSprite, 0, 15, 0.6, 25.0, 0.5, iColor, 10, 0);
+	TE_SetupBeamRingPoint(vec, 10.0, 375.0, g_BeamSprite, g_HaloSprite, 0, 15, 0.6, 25.0, 0.5, g_iPingColor[client], 10, 0);
 	TE_SendToAll();
 
 	return Plugin_Continue;
+}
+
+/* =========================================================================
+||  Bullets impact tracers
+============================================================================ */
+public void ToggleTracers(int client) {
+	g_bTracersActive[client] = !g_bTracersActive[client];
 }
 
 /* =========================================================================
@@ -1481,7 +1551,7 @@ public void CreatePingBeam(int client) {
 	float RemovePingMarker = g_cvCooldown.FloatValue;
 	if (RemovePingMarker > 0)
 		CreateTimer(RemovePingMarker, Timer_RemovePingMarker, client, TIMER_FLAG_NO_MAPCHANGE);
-	
+
 	CreateTimer(0.3, Timer_PingBeamRing, client | (g_Serial_Ping << 7), TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 
 	int slot = GetLeaderIndexWithLeaderSlot(g_iClientLeaderSlot[client]);
@@ -1518,19 +1588,12 @@ public Action Timer_PingBeamRing(Handle timer, any value) {
 	vec[1] = g_fPos[1];
 	vec[2] = g_fPos[2];
 
-	// First ping beam ring
-	int greyColor[4] = {128, 128, 128, 255};
-	TE_SetupBeamRingPoint(vec, 10.0, 70.0, g_BeamSprite, g_HaloSprite, 0, 20, 0.5, 12.0, 0.0, greyColor, 10, 0);
+	// First ping beam ring (grey)
+	TE_SetupBeamRingPoint(vec, 10.0, 70.0, g_BeamSprite, g_HaloSprite, 0, 20, 0.5, 12.0, 0.0, {128, 128, 128, 255}, 10, 0);
 	TE_SendToAll();
 
 	// Second ping beam ring
-	int iColor[4];
-	iColor[0] = g_LeaderData[slot].L_iColorPing[0];
-	iColor[1] = g_LeaderData[slot].L_iColorPing[1];
-	iColor[2] = g_LeaderData[slot].L_iColorPing[2];
-	iColor[3] = g_LeaderData[slot].L_iColorPing[3];
-
-	TE_SetupBeamRingPoint(vec, 10.0, 130.0, g_BeamSprite, g_HaloSprite, 0, 15, 0.6, 25.0, 0.5, iColor, 10, 0);
+	TE_SetupBeamRingPoint(vec, 10.0, 130.0, g_BeamSprite, g_HaloSprite, 0, 15, 0.6, 25.0, 0.5, g_iPingColor[client], 10, 0);
 	TE_SendToAll();
 
 	return Plugin_Continue;
@@ -1653,12 +1716,12 @@ public Action Command_NoDoorHug(int client, int args) {
 public Action Command_Ping(int client, int args) {
 	if (IsClientLeader(client))
 		CreatePing(client);
-	
+
 	return Plugin_Handled;
 }
 
 public Action Command_RemoveMarkers(int client, int args) {
-	if (IsClientLeader(client)) 
+	if (IsClientLeader(client))
 		RemoveAllMarkers(client);
 
 	return Plugin_Handled;
@@ -2006,7 +2069,7 @@ stock int SetupSpecialNeon(int client, int color[4], int type) {
 
 stock void GetPlayerEye(int client, float pos[3]) {
 	float vAngles[3], vOrigin[3];
-	
+
 	GetClientEyePosition(client, vOrigin);
 	GetClientEyeAngles(client, vAngles);
 
@@ -2043,6 +2106,9 @@ stock bool TraceFilterAllEntities(int entity, int contentsMask, int client) {
 ||  Leader Chat
 ============================================================================ */
 public Action HookPlayerChat(int client, char[] command, int args) {
+	if (g_bBlockLeaderChat)
+		return Plugin_Continue;
+
 	if (IsClientLeader(client)) {
 		char LeaderText[256];
 		GetCmdArgString(LeaderText, sizeof(LeaderText));
@@ -2050,12 +2116,12 @@ public Action HookPlayerChat(int client, char[] command, int args) {
 
 		if (LeaderText[0] == '/' || LeaderText[0] == '@' || strlen(LeaderText) == 0 || IsChatTrigger())
 			return Plugin_Handled;
-	
+
 		char codename[32], szMessage[255];
 		GetLeaderCodename(g_iClientLeaderSlot[client], codename, sizeof(codename));
 
 		if (g_bPlugin_ccc) {
-			FormatEx(szMessage, sizeof(szMessage), "{darkred}[{orange}Leader %s{darkred}] {%s}%N {default}: {%s}%s", 
+			FormatEx(szMessage, sizeof(szMessage), "{darkred}[{orange}Leader %s{darkred}] {%s}%N {default}: {%s}%s",
 				codename, g_sColorName[client], client, g_sColorChat[client], LeaderText);
 		} else {
 			FormatEx(szMessage, sizeof(szMessage), "{darkred}[{orange}Leader %s{darkred}] {teamcolor}%N {default}: {default}%s", codename, client, LeaderText);
@@ -2069,6 +2135,13 @@ public Action HookPlayerChat(int client, char[] command, int args) {
 }
 
 public Action HookPlayerChatTeam(int client, char[] command, int args) {
+	if (g_bBlockLeaderChat)
+	{
+		RemoveCommandListener(HookPlayerChat, "say");
+		RemoveCommandListener(HookPlayerChatTeam, "say_team");
+		return Plugin_Continue;
+	}
+
 	if (IsClientLeader(client)) {
 		char LeaderText[256];
 		GetCmdArgString(LeaderText, sizeof(LeaderText));
@@ -2076,12 +2149,12 @@ public Action HookPlayerChatTeam(int client, char[] command, int args) {
 
 		if (LeaderText[0] == '/' || LeaderText[0] == '@' || strlen(LeaderText) == 0 || IsChatTrigger())
 			return Plugin_Handled;
-	
+
 		char codename[32], szMessage[255];
 		GetLeaderCodename(g_iClientLeaderSlot[client], codename, sizeof(codename));
 
 		if (g_bPlugin_ccc) {
-			FormatEx(szMessage, sizeof(szMessage), "(Human) {darkred}[{orange}Leader %s{darkred}] {%s}%N {default}: {%s}%s", 
+			FormatEx(szMessage, sizeof(szMessage), "(Human) {darkred}[{orange}Leader %s{darkred}] {%s}%N {default}: {%s}%s",
 				codename, g_sColorName[client], client, g_sColorChat[client], LeaderText);
 		} else {
 			FormatEx(szMessage, sizeof(szMessage), "(Human) {darkred}[{orange}Leader %s{darkred}] {teamcolor}%N {default}: {default}%s", codename, client, LeaderText);
@@ -2159,13 +2232,13 @@ public Action Radio(int client, const char[] command, int argc) {
 		if (strcmp(command, "holdpos", false) == 0) PrintRadio(client, "Hold This Position.");
 		if (strcmp(command, "regroup", false) == 0) PrintRadio(client, "Regroup Team.");
 		if (strcmp(command, "followme", false) == 0) PrintRadio(client, "Follow me.");
-		if (strcmp(command, "takingfire", false) == 0) PrintRadio(client, "Taking fire... need assistance!"); 
-		if (strcmp(command, "thanks", false) == 0) PrintRadio(client, "Thanks!"); 
+		if (strcmp(command, "takingfire", false) == 0) PrintRadio(client, "Taking fire... need assistance!");
+		if (strcmp(command, "thanks", false) == 0) PrintRadio(client, "Thanks!");
 		if (strcmp(command, "go", false) == 0) PrintRadio(client, "Go go go!");
 		if (strcmp(command, "fallback", false) == 0) PrintRadio(client, "Team, fall back!");
 		if (strcmp(command, "sticktog", false) == 0) PrintRadio(client, "Stick together, team.");
 		if (strcmp(command, "report", false) == 0) PrintRadio(client, "Report in, team.");
-		if (strcmp(command, "roger", false) == 0) PrintRadio(client, "Roger that."); 
+		if (strcmp(command, "roger", false) == 0) PrintRadio(client, "Roger that.");
 		if (strcmp(command, "enemyspot", false) == 0) PrintRadio(client, "Enemy spotted.");
 		if (strcmp(command, "needbackup", false) == 0) PrintRadio(client, "Need backup.");
 		if (strcmp(command, "sectorclear", false) == 0) PrintRadio(client, "Sector clear.");
@@ -2174,7 +2247,7 @@ public Action Radio(int client, const char[] command, int argc) {
 		if (strcmp(command, "getout", false) == 0) PrintRadio(client, "Get out of there, it's gonna blow!.");
 		if (strcmp(command, "negative", false) == 0) PrintRadio(client, "Negative.");
 		if (strcmp(command, "enemydown", false) == 0) PrintRadio(client, "Enemy down.");
-		
+
 		return Plugin_Stop;
 	}
 	return Plugin_Continue;
@@ -2207,6 +2280,15 @@ void SetClientLeader(int client, int adminset = -1, int slot) {
 	g_bClientLeader[client] = true;
 	g_iClientLeaderSlot[client] = slot;
 	g_iCurrentLeader[slot] = client;
+
+	g_iPingColor[client][0] = g_LeaderData[slot].L_iColorPing[0];
+	g_iPingColor[client][1] = g_LeaderData[slot].L_iColorPing[1];
+	g_iPingColor[client][2] = g_LeaderData[slot].L_iColorPing[2];
+	g_iPingColor[client][3] = g_LeaderData[slot].L_iColorPing[3];
+
+	g_fTracerTime[client] = g_LeaderData[slot].L_TracerTime;
+	g_fTracerWidth[client] = g_LeaderData[slot].L_TracerWidth;
+
 	Reset_ClientSprite(client);
 	Reset_ClientResigned(client);
 
@@ -2223,7 +2305,7 @@ void SetClientLeader(int client, int adminset = -1, int slot) {
 		SetupPlayerNeon(client);
 
 	if (g_bGlowLeader)
-		ToolsSetEntityColor(client, g_LeaderData[slot].L_iColorPing[0], g_LeaderData[slot].L_iColorPing[1], g_LeaderData[slot].L_iColorPing[2]);
+		ToolsSetEntityColor(client, g_iPingColor[client][0], g_iPingColor[client][1], g_iPingColor[client][2]);
 
 	for (int i = 1; i <= MaxClients; i++) {
 		if (IsClientInGame(i))
@@ -2277,7 +2359,8 @@ void RemoveLeader(int client, ResignReason reason, bool announce = true) {
 	Reset_ClientBeaconActive(client);
 	Reset_ClientPingBeamActive(client);
 	Reset_ClientTrailActive(client);
-
+	Reset_ClientTracersActive(client);
+	Reset_ClientTracerSettings(client);
 	if (!wasLeader)
 		return;
 
@@ -2293,7 +2376,7 @@ void RemoveLeader(int client, ResignReason reason, bool announce = true) {
 		for (int i = 1; i < MaxClients; i++) {
 			if (!IsClientInGame(i))
 				continue;
-				
+
 			SetGlobalTransTarget(i);
 
 			switch (reason) {
@@ -3025,8 +3108,13 @@ stock void Reset_ClientBeaconActive(int client) {
 stock void Reset_ClientPingBeamActive(int client) {
 	g_bPingBeamActive[client] = false;
 }
+
 stock void Reset_ClientTrailActive(int client) {
 	g_bTrailActive[client] = false;
+}
+
+stock void Reset_ClientTracersActive(int client) {
+	g_bTracersActive[client] = false;
 }
 
 stock void Reset_ClientMarker(int client, int type) {
@@ -3035,6 +3123,11 @@ stock void Reset_ClientMarker(int client, int type) {
 
 stock void Reset_ClientMarkerInUse(int client) {
 	g_iMarkerInUse[client] = 0;
+}
+
+stock void Reset_ClientTracerSettings(int client) {
+	g_fTracerTime[client] = 0.0;
+	g_fTracerWidth[client] = 0.0;
 }
 
 stock void Reset_ClientResigned(int client) {
@@ -3067,7 +3160,7 @@ void Reset_AllLeaders() {
 void Reset_VotesForClient(int client) {
 	for (int i = 1; i <= MaxClients; i++) {
 		if (IsClientInGame(i) && GetClientFromSerial(g_iClientVoteWhom[i]) == client) {
-			Reset_ClientVoteWho(i);  
+			Reset_ClientVoteWho(i);
 		}
 	}
 }
