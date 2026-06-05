@@ -774,6 +774,33 @@ public void OnBulletImpact(Event event, const char[] name, bool dontBroadcast) {
 	TE_SendToAll();
 }
 
+public void OnBulletImpact(Event event, const char[] name, bool dontBroadcast) {
+	if (!g_bTracers)
+		return;
+
+	int client = GetClientOfUserId(event.GetInt("userid"));
+
+	if (!g_bTracersActive[client])
+		return;
+
+	float origin[3], destination[3], adjustedOrigin[3];
+	GetClientEyePosition(client, origin);
+
+	destination[0] = event.GetFloat("x");
+	destination[1] = event.GetFloat("y");
+	destination[2] = event.GetFloat("z");
+
+	float distance = GetVectorDistance(origin, destination);
+	float percent = 0.4 / (distance / 100.0);
+
+	adjustedOrigin[0] = origin[0] + (destination[0] - origin[0]) * percent;
+	adjustedOrigin[1] = origin[1] + (destination[1] - origin[1]) * percent - 0.08;
+	adjustedOrigin[2] = origin[2] + (destination[2] - origin[2]) * percent;
+
+	TE_SetupBeamPoints(adjustedOrigin, destination, g_iSpriteLaser, 0, 0, 0, g_fTracerTime[client], g_fTracerWidth[client], g_fTracerWidth[client] / 2, 1, 0.0, g_iPingColor[client], 0);
+	TE_SendToAll();
+}
+
 public Action Timer_RoundEndClean(Handle timer) {
 	for (int i = 1; i <= MaxClients; i++) {
 		if (!IsClientInGame(i))

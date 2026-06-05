@@ -1,4 +1,6 @@
 # ZLeader-Remake
+
+## This project is no longer maintained for CS:GO and has been worked on for CS:S by Rushaway from NiDE.gg 
  
 ### Simplified Leader Plugin ###
 - Configure Marker and Sprite through config file.

@@ -38,8 +38,8 @@
 		"ping_color" 		"72 255 72 255"
 		"ping_sound" 		"zleader/cs2ping_sfx.wav"
 
-		"tracer_time"   "0.7"
-		"tracer_width"  "0.8"
+		"tracer_time"		"0.7"
+		"tracer_width"		"0.8"
 	}
 
 	"bravo"
@@ -80,8 +80,8 @@
 		"ping_color" 		"72 255 72 255"
 		"ping_sound" 		"zleader/cs2ping_sfx.wav"
 
-		"tracer_time"   "0.7"
-		"tracer_width"  "0.8"
+		"tracer_time"		"0.7"
+		"tracer_width"		"0.8"
 	}
 
 	"charlie"
@@ -122,8 +122,8 @@
 		"ping_color" 		"72 255 72 255"
 		"ping_sound" 		"zleader/cs2ping_sfx.wav"
 
-		"tracer_time"   "0.7"
-		"tracer_width"  "0.8"
+		"tracer_time"		"0.7"
+		"tracer_width"		"0.8"
 	}
 
 	"delta"
@@ -164,8 +164,8 @@
 		"ping_color" 		"72 255 72 255"
 		"ping_sound" 		"zleader/cs2ping_sfx.wav"
 
-		"tracer_time"   "0.7"
-		"tracer_width"  "0.8"
+		"tracer_time"		"0.7"
+		"tracer_width"		"0.8"
 	}
 
 	"echo"
@@ -206,7 +206,7 @@
 		"ping_color" 		"72 255 72 255"
 		"ping_sound" 		"zleader/cs2ping_sfx.wav"
 
-		"tracer_time"   "0.7"
-		"tracer_width"  "0.8"
+		"tracer_time"		"0.7"
+		"tracer_width"		"0.8"
 	}
 }

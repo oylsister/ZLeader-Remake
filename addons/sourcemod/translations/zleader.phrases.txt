@@ -251,6 +251,11 @@
 		"en"		"Toggle Trail"
 	}
 
+	"Toggle Tracers"
+	{
+		"en"		"Toggle Tracers"
+	}
+
 	"Place Marker"
 	{
 		"en"		"Place Marker"
